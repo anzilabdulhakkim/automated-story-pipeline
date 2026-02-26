@@ -1,0 +1,34 @@
+# ── Secrets (NEVER commit these) ──────────────────────────────────────────────
+.env
+_env
+*.env
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# ── Pipeline runtime outputs ───────────────────────────────────────────────────
+.cache/
+logs/
+story_images/
+documents/
+stories/
+configs/
+analytics/
+
+# ── OS / editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/

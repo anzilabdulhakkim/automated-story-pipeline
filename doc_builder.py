@@ -1,0 +1,318 @@
+"""
+doc_builder.py - Word document assembly and image generation.
+
+Builds a .docx from a generated story JSON. If image generation is unavailable
+for the current project/account, the document still builds with text content.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import re
+import time
+from typing import Optional
+
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Inches
+from google import genai
+from google.genai import types as genai_types
+
+from config import CONFIG
+
+log = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Gemini client for image generation
+# ---------------------------------------------------------------------------
+
+_image_client: Optional[genai.Client] = None
+_image_generation_disabled_reason: Optional[str] = None
+
+
+def _get_image_client() -> genai.Client:
+    """Lazy-init Gemini client for image generation."""
+    global _image_client
+    if _image_client is None:
+        if not CONFIG.gemini_api_key:
+            raise EnvironmentError("GEMINI_API_KEY is not set.")
+        _image_client = genai.Client(
+            api_key=CONFIG.gemini_api_key,
+            http_options=genai_types.HttpOptions(
+                retry_options=genai_types.HttpRetryOptions(attempts=1),
+            ),
+        )
+    return _image_client
+
+
+# Delay between image generation requests (rate-limit guard).
+IMAGE_DELAY_SECONDS = int(os.getenv("IMAGE_DELAY_SECONDS", "4"))
+
+
+def _normalize_error_text(exc: Exception) -> str:
+    return " ".join(str(exc).split()).lower()
+
+
+def _is_rate_limit_error(error_text: str) -> bool:
+    return (
+        "429" in error_text
+        or "resource_exhausted" in error_text
+        or "rate limit" in error_text
+    )
+
+
+def _is_non_retryable_error(error_text: str) -> bool:
+    """
+    Treat 4xx (except 429) as non-retryable.
+    This includes billing/access restrictions and invalid arguments.
+    """
+    if _is_rate_limit_error(error_text):
+        return False
+
+    if "only accessible to billed users" in error_text:
+        return True
+    if "permission_denied" in error_text or "forbidden" in error_text:
+        return True
+    if "invalid_argument" in error_text:
+        return True
+    if "enum value is not supported" in error_text:
+        return True
+    if "is not supported in gemini api" in error_text:
+        return True
+    if "person_generation parameter is not supported" in error_text:
+        return True
+
+    status_codes = re.findall(r"\b\d{3}\b", error_text)
+    for code_str in status_codes:
+        code = int(code_str)
+        if 400 <= code < 500 and code != 429:
+            return True
+    return False
+
+
+def _disable_image_generation(reason: str) -> None:
+    global _image_generation_disabled_reason
+    if _image_generation_disabled_reason is None:
+        _image_generation_disabled_reason = reason
+        log.warning("Image generation disabled for this run: %s", reason)
+
+
+# ---------------------------------------------------------------------------
+# Image Generation
+# ---------------------------------------------------------------------------
+
+def download_page_image(prompt: str, filename: str, image_dir: str = "story_images") -> Optional[str]:
+    """
+    Generate a single image via Imagen and save it to image_dir/.
+
+    Returns:
+        Absolute file path on success, otherwise None.
+    """
+    if _image_generation_disabled_reason:
+        log.info(
+            "Skipping image generation for %s (disabled: %s).",
+            filename,
+            _image_generation_disabled_reason,
+        )
+        return None
+
+    os.makedirs(image_dir, exist_ok=True)
+    filepath = os.path.abspath(os.path.join(image_dir, filename))
+    if os.path.exists(filepath):
+        log.info("Image cache hit for %s - reusing local file.", filename)
+        return filepath
+
+    log.info("Generating image: %s", filename)
+    print(f"  [IMG] Generating image for: {filename}...")
+
+    # Rate-limit delay
+    time.sleep(IMAGE_DELAY_SECONDS)
+
+    # Remove Midjourney-style safety suffixes if they exist
+    prompt = re.sub(r"\s--no\s(text|words|letters)\b", "", prompt)
+    prompt = prompt.strip()
+
+    client = _get_image_client()
+    max_retries = 3
+
+    for attempt in range(max_retries):
+        try:
+            image_cfg = genai_types.GenerateImagesConfig(
+                number_of_images=1,
+                aspect_ratio="1:1",
+                output_mime_type="image/jpeg",
+            )
+
+            response = client.models.generate_images(
+                model=CONFIG.imagen_model,
+                prompt=prompt,
+                config=image_cfg,
+            )
+
+            if response.generated_images:
+                generated = response.generated_images[0]
+                image_obj = getattr(generated, "image", None)
+                img_data = getattr(image_obj, "image_bytes", None)
+                if img_data:
+                    with open(filepath, "wb") as f:
+                        f.write(img_data)
+                    print(f"  [OK] Image saved: {filepath}")
+                    return filepath
+
+            print(
+                f"  [WARN] No image data in response for {filename}. "
+                f"Attempt {attempt + 1}/{max_retries}."
+            )
+            # Add a small delay between retries if image data is missing
+            if attempt < max_retries - 1:
+                time.sleep(5)
+
+        except Exception as e:
+            error_text = _normalize_error_text(e)
+            if _is_rate_limit_error(error_text):
+                wait = 30 * (2 ** attempt)  # 30s, 60s, 120s
+                print(
+                    f"  [WARN] Rate limited (429). Waiting {wait}s before retry "
+                    f"{attempt + 1}/{max_retries}..."
+                )
+                time.sleep(wait)
+                continue
+
+            if _is_non_retryable_error(error_text):
+                reason = str(e)
+                _disable_image_generation(reason)
+                print("  [WARN] Non-retryable image API error.")
+                print(f"  [WARN] Disabling further image calls for this run: {reason}")
+                return None
+
+            wait = (attempt + 1) * 5
+            print(
+                f"  [WARN] Error for {filename}: {e}. "
+                f"Attempt {attempt + 1}/{max_retries}."
+            )
+            if attempt < max_retries - 1:
+                print(f"  Retrying in {wait}s...")
+                time.sleep(wait)
+
+    print(f"  [FAIL] Failed to generate image for {filename} after {max_retries} attempts.")
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Word Document Assembly
+# ---------------------------------------------------------------------------
+
+def create_word_document(story_data: dict, output_dir: str = ".", image_dir: str = "story_images") -> str:
+    """
+    Build a formatted Word document from a story JSON.
+
+    Layout: cover page, then one spread per page (left image, right text).
+    Returns:
+        Path to saved .docx.
+    """
+    print("[DOC] Assembling the Word document...")
+    doc = Document()
+
+    image_report = {
+        "expected_images": 0,
+        "generated_images": 0,
+        "failed_images": 0,
+        "skipped_images": 0,
+        "disabled_reason": None,
+    }
+
+    doc.add_heading(story_data.get("title", "Untitled Story"), level=1)
+
+    meta_para = doc.add_paragraph()
+    meta_para.add_run(
+        f"Target Age: {story_data.get('target_age_confirmation', '?')} | "
+    ).bold = True
+    meta_para.add_run(
+        f"Category: {story_data.get('story_category', '?')} | "
+    ).bold = True
+    meta_para.add_run(
+        f"Tone: {story_data.get('story_tone', '?')} | "
+    ).bold = True
+    meta_para.add_run(
+        f"Moral: {story_data.get('moral_value', '?')}\n"
+    ).bold = True
+    meta_para.add_run(f"Synopsis: {story_data.get('synopsis', '')}")
+
+    # Cover image
+    cover_prompt = story_data.get("cover_image_prompt")
+    if cover_prompt:
+        image_report["expected_images"] += 1
+        cover_path = download_page_image(cover_prompt, "cover.jpg", image_dir=image_dir)
+        if cover_path:
+            image_report["generated_images"] += 1
+            doc.add_picture(cover_path, width=Inches(5.0))
+            doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        elif _image_generation_disabled_reason:
+            image_report["skipped_images"] += 1
+            image_report["disabled_reason"] = _image_generation_disabled_reason
+        else:
+            image_report["failed_images"] += 1
+
+    doc.add_page_break()
+
+    # Story pages
+    for page in story_data.get("pages", []):
+        page_num = page.get("page_number", "?")
+        text = page.get("text", "")
+        image_prompt = page.get("image_prompt", "")
+
+        image_path = None
+        if image_prompt:
+            image_report["expected_images"] += 1
+            if _image_generation_disabled_reason:
+                image_report["skipped_images"] += 1
+                image_report["disabled_reason"] = _image_generation_disabled_reason
+            else:
+                image_filename = f"page_{page_num}.jpg"
+                image_path = download_page_image(image_prompt, image_filename, image_dir=image_dir)
+                if image_path:
+                    image_report["generated_images"] += 1
+                elif _image_generation_disabled_reason:
+                    image_report["skipped_images"] += 1
+                    image_report["disabled_reason"] = _image_generation_disabled_reason
+                else:
+                    image_report["failed_images"] += 1
+
+        table = doc.add_table(rows=1, cols=2)
+        table.autofit = False
+        table.columns[0].width = Inches(3.5)
+        table.columns[1].width = Inches(3.0)
+
+        row = table.rows[0]
+        cell_left = row.cells[0]
+        if image_path:
+            paragraph = cell_left.paragraphs[0]
+            run = paragraph.add_run()
+            run.add_picture(image_path, width=Inches(3.2))
+
+        cell_right = row.cells[1]
+        cell_right.text = f"Page {page_num}\n\n{text}"
+
+        doc.add_page_break()
+
+    os.makedirs(output_dir, exist_ok=True)
+    output_filename = story_data.get("output_filename", "XAVI_AI_Story_Sample.docx")
+    output_path = os.path.join(output_dir, output_filename)
+    doc.save(output_path)
+
+    story_data["_image_generation_report"] = image_report
+
+    print(f"[OK] Document saved: {output_path}")
+    print(
+        "[IMG] Summary: "
+        f"generated={image_report['generated_images']} "
+        f"failed={image_report['failed_images']} "
+        f"skipped={image_report['skipped_images']} "
+        f"expected={image_report['expected_images']}"
+    )
+    if image_report["disabled_reason"]:
+        print(f"[IMG] Disabled reason: {image_report['disabled_reason']}")
+
+    return output_path

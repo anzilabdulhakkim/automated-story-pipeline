@@ -1,0 +1,19 @@
+# Core Gemini SDK (new unified package — replaces deprecated google-generativeai)
+google-genai>=1.0
+
+# Async HTTP + env loading
+aiohttp>=3.9
+python-dotenv>=1.0
+
+# Retry / backoff
+tenacity>=8.2
+
+# File-based persistent cache (exact-match response caching)
+diskcache>=5.6
+
+# Typing helpers (backport for Python < 3.11)
+typing-extensions>=4.9
+
+# Document assembly (doc_builder.py)
+python-docx>=1.0
+Pillow>=10.0
