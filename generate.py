@@ -1,5 +1,5 @@
 """
-generate.py — Main CLI entry point for the XAVI AI Story Pipeline.
+generate.py — Main CLI entry point for the Prajna Story Pipeline.
 
 Generates N stories with full Word document output (cover + page images + text).
 
@@ -221,7 +221,7 @@ def save_story_as_markdown(story_json: dict, config: dict) -> str:
         if c.isalnum() or c in " _-"
     ).strip().replace(" ", "_")
 
-    filename = f"XAVI_STORY_{config['target_age']}yr_{config['user_nickname']}_{safe_title}.md"
+    filename = f"Prajna_STORY_{config['target_age']}yr_{config['user_nickname']}_{safe_title}.md"
     filepath = os.path.join("stories", filename)
 
     md = []
@@ -296,7 +296,7 @@ async def process_single_story(
                 if c.isalnum() or c in " _-"
             ).strip()
             story_json["output_filename"] = (
-                f"XAVI_AI_{config['target_age']}yr_"
+                f"Prajna_{config['target_age']}yr_"
                 f"{config['user_nickname']}_{safe_title}_{story_id[-6:]}.docx"
             )
 
@@ -425,7 +425,7 @@ async def main_async(amount: int, dry_run: bool, text_only: bool) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="XAVI AI Story Pipeline — Generate stories with Word docs.",
+        description="Prajna Story Pipeline — Generate stories with Word docs.",
     )
     parser.add_argument(
         "amount", nargs="?", type=int, default=1,

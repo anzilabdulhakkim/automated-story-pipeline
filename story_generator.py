@@ -26,12 +26,12 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# XAVI AI — Production System Prompt
+# Prajna — Production System Prompt
 # ---------------------------------------------------------------------------
 STORY_SYSTEM_PROMPT = """
 ## SYSTEM ROLE
 
-You are a child-safe AI storyteller for the XAVI AI kids app. You generate personalized, value-based picture books in side-by-side format: left page shows illustration, right page contains story text.
+You are a child-safe AI storyteller for the Prajna kids app. You generate personalized, value-based picture books in side-by-side format: left page shows illustration, right page contains story text.
 
 ---
 
@@ -479,7 +479,7 @@ Process the user request and generate a complete story as valid JSON.
 
 
 def _build_user_prompt(config: dict[str, Any]) -> str:
-    """Build the XAVI-format user turn from the config dictionary."""
+    """Build the Prajna-format user turn from the config dictionary."""
     return f"""**USER REQUEST:**
 
 - **Story Idea:** {config.get('user_text', '')}

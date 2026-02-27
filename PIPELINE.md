@@ -1,4 +1,4 @@
-# XAVI AI Story Pipeline — Technical Documentation
+# Prajna Story Pipeline — Technical Documentation
 
 ## Overview
 
@@ -17,7 +17,7 @@ This pipeline generates **personalized, age-appropriate children's picture books
                ▼                                  ▼
 ┌──────────────────────────┐        ┌──────────────────────────┐
 │   story_generator.py     │        │     doc_builder.py       │
-│  XAVI system prompt      │        │  Image gen + Word doc    │
+│  Prajna system prompt    │        │  Image gen + Word doc    │
 │  + user prompt builder   │        │  assembly                │
 └───────────┬──────────────┘        └───────────┬──────────────┘
             │                                   │
@@ -64,7 +64,7 @@ When you run `python generate.py 5`, the pipeline:
 For each config, the pipeline calls `generate_story()`:
 
 ```
-1. Build XAVI system prompt (~4,000 tokens)
+1. Build Prajna system prompt (~4,000 tokens)
    └─ Safety rules, age parameters, image prompt structure, JSON schema
 
 2. Build user prompt (~100 tokens)
@@ -105,7 +105,7 @@ For each completed story JSON:
    └─ Per page: 2-column table [Image 3.2" | Text]
 
 4. Save to documents/
-   └─ XAVI_AI_{age}yr_{name}_{title}.docx
+   └─ Prajna_{age}yr_{name}_{title}.docx
 ```
 
 ---
@@ -213,8 +213,8 @@ Examples: "bedtime story about dinosaur", "story about brave girl", "moral story
 
 | File | Location | Persists? |
 |------|----------|-----------|
-| Word document | `./documents/XAVI_AI_...docx` | ✅ Unique per story |
-| Markdown story | `./stories/XAVI_STORY_...md` | ✅ Unique per story |
+| Word document | `./documents/Prajna_...docx` | ✅ Unique per story |
+| Markdown story | `./stories/Prajna_STORY_...md` | ✅ Unique per story |
 | Story images | `./story_images/{name}_{title}/page_N.jpg` | ✅ Per-story folder |
 | Config JSON | `./story_configs_batch_{N}_{timestamp}.json` | ✅ Timestamped |
 | Analytics JSON | `./generation_analytics_batch_{N}_{timestamp}.json` | ✅ Timestamped |
@@ -240,7 +240,7 @@ Examples: "bedtime story about dinosaur", "story about brave girl", "moral story
 - **Silent reframe**: Unsafe prompts transformed without refusal ("zombie attack" → "sleepy neighbors")
 - **Character safety**: Names never appear in image prompts (only physical traits)
 - **Visual consistency**: 3-trait character description locked across all page images
-- **Image safety**: All prompts end with `--no text --no words --no letters`
+- **Image safety**: All prompts end with no text, no words, no letters
 
 ---
 

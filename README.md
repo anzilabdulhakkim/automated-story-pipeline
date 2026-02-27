@@ -1,4 +1,4 @@
-# XAVI AI Story Pipeline 🚀
+# Prajna Story Pipeline
 
 A production-grade pipeline for generating **personalized children's picture books** using Google Gemini 2.5 Flash. Outputs fully formatted Word documents with AI-generated illustrations and age-appropriate text.
 
@@ -6,7 +6,7 @@ A production-grade pipeline for generating **personalized children's picture boo
 
 ## ✨ Key Features
 
-- **📖 Full XAVI System Prompt** — Child-safe storytelling with safety protocol, silent reframing, age-based parameters, and visual consistency enforcement
+- **📖 Full Prajna System Prompt** — Child-safe storytelling with safety protocol, silent reframing, age-based parameters, and visual consistency enforcement
 - **🎯 Age-Adaptive Output** — 8 pages (ages 3-5), 12 pages (ages 6-8), 18 pages (ages 9-12) with strict word count limits
 - **🎨 AI Image Generation** — Per-page illustrations via Imagen with character consistency lock and auto-repair guardrails
 - **📄 Word Document Output** — Side-by-side layout (image left, text right) with cover page
@@ -48,7 +48,7 @@ IMAGE_DELAY_SECONDS=4
 | File | Purpose |
 |------|---------|
 | `generate.py` | **Main CLI entry point** — generates stories with Word docs |
-| `story_generator.py` | XAVI system prompt + user prompt builder → Gemini Flash |
+| `story_generator.py` | Prajna system prompt + user prompt builder → Gemini Flash |
 | `doc_builder.py` | Image generation + Word document assembly |
 | `gemini_client.py` | Async Gemini SDK client with retry, cache, rate limiting |
 | `router.py` | Model routing (Flash / Pro / Imagen classification) |

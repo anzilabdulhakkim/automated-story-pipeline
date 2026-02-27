@@ -316,7 +316,7 @@ def create_word_document(story_data: dict, output_dir: str = ".", image_dir: str
         doc.add_page_break()
 
     os.makedirs(output_dir, exist_ok=True)
-    output_filename = story_data.get("output_filename", "XAVI_AI_Story_Sample.docx")
+    output_filename = story_data.get("output_filename", "Prajna_Story_Sample.docx")
     output_path = os.path.join(output_dir, output_filename)
     doc.save(output_path)
 
