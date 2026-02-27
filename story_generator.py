@@ -228,10 +228,10 @@ Create natural, diverse stories:
 
 ### Cover Image
 ```
-{art_style_prefix} book cover, a {target_age}-year-old child, [EXACT 3-TRAIT CHARACTER],
+{art_style_prefix} storybook cover illustration, a {target_age}-year-old child, [EXACT 3-TRAIT CHARACTER],
 [action with body position], hands [position], in [story environment], [story lighting],
 [facial expression], centered composition, anatomically correct hands and feet, clear facial features,
-vibrant colors, high quality
+vibrant colors, high quality --no text --no words --no letters
 ```
 
 ### Pre-Output Check (Every Prompt Must Have)

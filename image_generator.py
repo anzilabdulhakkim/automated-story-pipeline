@@ -80,6 +80,21 @@ def _disable_image_generation(reason: str) -> None:
         log.warning("Image generation disabled for this run: %s", reason)
 
 
+def _sanitize_image_prompt(prompt: str, *, is_cover: bool) -> str:
+    """
+    Reduce common text/number artifacts that image models may add to covers.
+    """
+    prompt = re.sub(r"\s--no\s(text|words|letters)\b", "", prompt, flags=re.IGNORECASE).strip()
+    if is_cover:
+        prompt = re.sub(r"\bbook cover\b", "storybook cover illustration", prompt, flags=re.IGNORECASE)
+        prompt = f"{prompt}, centered composition, clean background space near top"
+    no_text_clause = (
+        "no visible text, no letters, no words, no numbers, no symbols, "
+        "no logos, no watermark, no signature"
+    )
+    return f"{prompt}, {no_text_clause}"
+
+
 # ---------------------------------------------------------------------------
 # Module-level Imagen client singleton (mirrors doc_builder._get_image_client)
 # ---------------------------------------------------------------------------
@@ -142,9 +157,9 @@ async def generate_image(
         tone=tone
     )
 
-    # 2. Cleanup: Remove Midjourney-style safety suffixes if they exist in scene_description
-    prompt = re.sub(r"\s--no\s(text|words|letters)\b", "", prompt)
-    prompt = prompt.strip()
+    # 2. Cleanup and anti-text hardening
+    is_cover = os.path.basename(filename).lower().startswith("cover")
+    prompt = _sanitize_image_prompt(prompt, is_cover=is_cover)
 
     os.makedirs(image_dir, exist_ok=True)
     cache_path = os.path.abspath(os.path.join(image_dir, filename))

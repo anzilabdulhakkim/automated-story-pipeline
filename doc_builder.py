@@ -99,6 +99,25 @@ def _disable_image_generation(reason: str) -> None:
         log.warning("Image generation disabled for this run: %s", reason)
 
 
+def _sanitize_image_prompt(prompt: str, *, is_cover: bool) -> str:
+    """
+    Tighten prompt safety to reduce random text/glyph artifacts in generated images.
+    """
+    # Remove Midjourney-style suffixes; we inject stronger negatives below.
+    prompt = re.sub(r"\s--no\s(text|words|letters)\b", "", prompt, flags=re.IGNORECASE).strip()
+
+    if is_cover:
+        # "book cover" strongly biases models to invent title typography.
+        prompt = re.sub(r"\bbook cover\b", "storybook cover illustration", prompt, flags=re.IGNORECASE)
+        prompt = f"{prompt}, centered composition, clean background space near top"
+
+    no_text_clause = (
+        "no visible text, no letters, no words, no numbers, no symbols, "
+        "no logos, no watermark, no signature"
+    )
+    return f"{prompt}, {no_text_clause}"
+
+
 # ---------------------------------------------------------------------------
 # Image Generation
 # ---------------------------------------------------------------------------
@@ -130,9 +149,8 @@ def download_page_image(prompt: str, filename: str, image_dir: str = "story_imag
     # Rate-limit delay
     time.sleep(IMAGE_DELAY_SECONDS)
 
-    # Remove Midjourney-style safety suffixes if they exist
-    prompt = re.sub(r"\s--no\s(text|words|letters)\b", "", prompt)
-    prompt = prompt.strip()
+    is_cover = os.path.basename(filename).lower().startswith("cover")
+    prompt = _sanitize_image_prompt(prompt, is_cover=is_cover)
 
     client = _get_image_client()
     max_retries = 3
