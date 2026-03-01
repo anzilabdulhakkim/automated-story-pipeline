@@ -1,6 +1,6 @@
 # Prajna Story Pipeline
 
-A production-grade pipeline for generating **personalized children's picture books** using Google Gemini 2.5 Flash. Outputs fully formatted Word documents with AI-generated illustrations and age-appropriate text.
+A production-grade pipeline for generating **personalized children's picture books** using Google gemini-3-flash-preview. Outputs fully formatted Word documents with AI-generated illustrations and age-appropriate text.
 
 ---
 
@@ -83,8 +83,8 @@ IMAGE_DELAY_SECONDS=4
 
 | Purpose | Model | Status |
 |---------|-------|--------|
-| Story text generation | `gemini-2.5-flash` | ✅ Active (Paid Tier) |
-| Image generation | `imagen-4.0-fast` | ✅ Active |
+| Story text generation | `gemini-3-flash-preview` | Paid tier |
+| Image generation | `gemini-2.5-flash-image` | Paid tier |
 | Complex/long tasks | `gemini-1.5-pro` | ⏸️ Disabled (cost savings) |
 
 ---
@@ -93,9 +93,9 @@ IMAGE_DELAY_SECONDS=4
 
 | Batch Size | Text Cost (Paid Tier) | Time (text only) | Time (with images) |
 |------------|-----------|-------------------|---------------------|
-| 1 story | ~$0.007 | ~12s | ~2-5 min |
-| 10 stories | ~$0.07 | ~3 min | ~20-50 min |
-| 100 stories | ~$0.70 | ~30 min | ~3-8 hours |
+| 1 story | ~$0.008 | ~12s | ~1-2 min |
+| 10 stories | ~$0.08 | ~3 min | ~10-20 min |
+| 100 stories | ~$0.80 | ~30 min | ~1.5-3 hours |
 
 ---
 

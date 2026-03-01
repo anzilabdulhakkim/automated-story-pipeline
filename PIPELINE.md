@@ -32,7 +32,7 @@ This pipeline generates **personalized, age-appropriate children's picture books
 │  │ logger.py          │  │                    │
 │  └────────────────────┘  │                    │
 │                          │                    │
-│  Model: gemini-2.5-flash │                    │
+│  Model: gemini-3-flash-preview │                    │
 └──────────────────────────┘                    │
                                                 │
                     ┌───────────────────────────┘
@@ -75,7 +75,7 @@ For each config, the pipeline calls `generate_story()`:
    ├─ router.route(prompt, task_type)           → Always returns FLASH
    ├─ cache.get(model, system_prompt, prompt)   → Return cached if exists
    ├─ _raw_call() to Gemini API
-   │   ├─ Model: gemini-2.5-flash
+   │   ├─ Model: gemini-3-flash-preview
    │   ├─ response_mime_type: "application/json"
    │   ├─ thinking_config: disabled (budget=0)
    │   └─ max_output_tokens: 8,192
@@ -227,8 +227,8 @@ Examples: "bedtime story about dinosaur", "story about brave girl", "moral story
 
 | Purpose | Model | Cost (per 1M tokens) |
 |---------|-------|---------------------|
-| Story text generation | `gemini-2.5-flash` | $0.075 input / $0.30 output |
-| Image generation | `gemini-2.5-flash-image` | Free tier available |
+| Story text generation | `gemini-3-flash-preview` | $0.50 input / $3.00 output |
+| Image generation | `gemini-2.5-flash-image` | $0.03 per image |
 
 **Pro model (`gemini-1.5-pro`) is currently DISABLED** for cost efficiency.
 
@@ -248,9 +248,9 @@ Examples: "bedtime story about dinosaur", "story about brave girl", "moral story
 
 | Batch Size | Text Cost | Image Cost | Total Time |
 |------------|-----------|------------|------------|
-| 1 story | ~$0.001 | Free tier | ~2-5 min |
-| 10 stories | ~$0.01 | Free tier | ~20-50 min |
-| 100 stories | ~$0.12 | Free tier | ~3-8 hours |
+| 1 story | ~$0.001 | ~$0.24 - $0.54 | ~2-5 min |
+| 10 stories | ~$0.01 | ~$2.40 - $5.40 | ~20-50 min |
+| 100 stories | ~$0.12 | ~$24.00 - $54.00 | ~3-8 hours |
 
 ---
 

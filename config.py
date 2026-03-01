@@ -51,15 +51,15 @@ class ModelConfig:
         )
 
 
-# Gemini 2.5 Flash — workhorse model (fast, multimodal)
-# Pricing (paid tier, as of 2025): $0.30/1M input, $2.50/1M output
+# Gemini 3 Flash Preview — workhorse model (fast, multimodal)
+# Pricing (paid tier, as of 2026): $0.50/1M input, $3.00/1M output
 # Free tier: $0/1M (capped, not accurate for cost tracking)
 FLASH_MODEL = ModelConfig(
     name=_env_model_name("GEMINI_TEXT_MODEL"),
     max_output_tokens=8_192,
-    cost_per_1k_input=0.000_300,   # $0.30 per 1M input tokens (paid tier)
-    cost_per_1k_output=0.002_500,  # $2.50 per 1M output tokens (paid tier)
-    rpm_limit=1_000,               # paid-tier RPM (free tier was 15)
+    cost_per_1k_input=0.000_500,   # $0.50 per 1M input tokens (paid tier)
+    cost_per_1k_output=0.003_000,  # $3.00 per 1M output tokens (paid tier)
+    rpm_limit=int(os.getenv("GEMINI_TEXT_RPM_LIMIT", "2000"))
 )
 
 # Gemini 1.5 Pro — used only for complex / long-context tasks
@@ -112,6 +112,11 @@ class PipelineConfig:
     story_images_dir:     str = "story_images"
     api_call_log_file:   str = "logs/api_calls.jsonl"
     rate_limit_state_file: str = "logs/rate_limits.json"
+    
+    # ── Imagen Quotas ────────────────────────────────────────────────────────
+    # Defaults to Tier 1 limits (10 RPM, 70 RPD). Override via .env if needed.
+    imagen_rpm_limit: int = int(os.getenv("IMAGEN_RPM_LIMIT", "10"))
+    imagen_rpd_limit: int = int(os.getenv("IMAGEN_RPD_LIMIT", "70"))
 
     # ── Router thresholds ────────────────────────────────────────────────────
     # Prompts whose estimated token count exceeds this are routed to Pro
