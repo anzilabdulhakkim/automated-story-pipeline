@@ -48,6 +48,7 @@ def _get_image_client() -> genai.Client:
 
 
 # Delay between image generation requests (rate-limit guard).
+# Defaults to 4s. Override via IMAGE_DELAY_SECONDS env var.
 IMAGE_DELAY_SECONDS = int(os.getenv("IMAGE_DELAY_SECONDS", "4"))
 
 
@@ -60,6 +61,7 @@ def _is_rate_limit_error(error_text: str) -> bool:
         "429" in error_text
         or "resource_exhausted" in error_text
         or "rate limit" in error_text
+        or "quota exceeded" in error_text
     )
 
 
@@ -103,7 +105,7 @@ def _sanitize_image_prompt(prompt: str, *, is_cover: bool) -> str:
     """
     Tighten prompt safety to reduce random text/glyph artifacts in generated images.
     """
-    # Remove Midjourney-style suffixes; we inject stronger negatives below.
+    # Remove Midjourney-style suffixes
     prompt = re.sub(r"\s--no\s(text|words|letters)\b", "", prompt, flags=re.IGNORECASE).strip()
 
     if is_cover:
@@ -122,7 +124,14 @@ def _sanitize_image_prompt(prompt: str, *, is_cover: bool) -> str:
 # Image Generation
 # ---------------------------------------------------------------------------
 
-def download_page_image(prompt: str, filename: str, image_dir: str = "story_images") -> Optional[str]:
+from rate_limiter import rate_limiter
+
+def download_page_image(
+    prompt: str, 
+    filename: str, 
+    image_dir: str = "story_images",
+    session_id: str = "default"
+) -> Optional[str]:
     """
     Generate a single image via Imagen and save it to image_dir/.
 
@@ -135,6 +144,11 @@ def download_page_image(prompt: str, filename: str, image_dir: str = "story_imag
             filename,
             _image_generation_disabled_reason,
         )
+        return None
+
+    # Proactive Quota Check
+    if not rate_limiter.check_imagen_quota(session_id):
+        _disable_image_generation("Daily RPD quota reached or circuit breaker tripped.")
         return None
 
     os.makedirs(image_dir, exist_ok=True)
@@ -156,23 +170,34 @@ def download_page_image(prompt: str, filename: str, image_dir: str = "story_imag
     max_retries = 3
 
     for attempt in range(max_retries):
+        # Final safety check before actual API call
+        if not rate_limiter.check_imagen_quota(session_id):
+            return None
+
+        # Record attempt (dashboard tracks all attempts)
+        rate_limiter.record_image_request(session_id)
+
         try:
-            image_cfg = genai_types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio="1:1",
-                output_mime_type="image/jpeg",
+            image_cfg = genai_types.GenerateContentConfig(
+                image_config=genai_types.ImageConfig(
+                    aspect_ratio="1:1"
+                )
             )
 
-            response = client.models.generate_images(
+            # Gemini models require generate_content, not generate_images
+            response = client.models.generate_content(
                 model=CONFIG.imagen_model,
-                prompt=prompt,
+                contents=prompt,
                 config=image_cfg,
             )
 
-            if response.generated_images:
-                generated = response.generated_images[0]
-                image_obj = getattr(generated, "image", None)
-                img_data = getattr(image_obj, "image_bytes", None)
+            if response.candidates and response.candidates[0].content.parts:
+                img_data = None
+                for part in response.candidates[0].content.parts:
+                    if getattr(part, "inline_data", None) and getattr(part.inline_data, "data", None):
+                        img_data = part.inline_data.data
+                        break
+                        
                 if img_data:
                     with open(filepath, "wb") as f:
                         f.write(img_data)
@@ -183,16 +208,28 @@ def download_page_image(prompt: str, filename: str, image_dir: str = "story_imag
                 f"  [WARN] No image data in response for {filename}. "
                 f"Attempt {attempt + 1}/{max_retries}."
             )
-            # Add a small delay between retries if image data is missing
             if attempt < max_retries - 1:
                 time.sleep(5)
 
         except Exception as e:
             error_text = _normalize_error_text(e)
+            
+            # Quota Exceeded? Trip the circuit breaker.
+            if "quota exceeded" in error_text or "resource_exhausted" in error_text:
+                rate_limiter.trip_image_circuit_breaker(session_id, f"API Error: {e}")
+                _disable_image_generation(f"Quota exceeded: {e}")
+                return None
+
             if _is_rate_limit_error(error_text):
-                wait = 30 * (2 ** attempt)  # 30s, 60s, 120s
+                # Respect server hint if possible or use exponential backoff
+                match = re.search(r'retry in (\d+\.?\d*)', str(e), re.IGNORECASE)
+                if match:
+                    wait = float(match.group(1)) + 2.0
+                else:
+                    wait = 30 * (2 ** attempt)  # 30s, 60s, 120s
+                
                 print(
-                    f"  [WARN] Rate limited (429). Waiting {wait}s before retry "
+                    f"  [WARN] Rate limited (429). Waiting {wait:.1f}s before retry "
                     f"{attempt + 1}/{max_retries}..."
                 )
                 time.sleep(wait)
@@ -222,7 +259,12 @@ def download_page_image(prompt: str, filename: str, image_dir: str = "story_imag
 # Word Document Assembly
 # ---------------------------------------------------------------------------
 
-def create_word_document(story_data: dict, output_dir: str = ".", image_dir: str = "story_images") -> str:
+def create_word_document(
+    story_data: dict, 
+    output_dir: str = ".", 
+    image_dir: str = "story_images",
+    session_id: str = "default"
+) -> str:
     """
     Build a formatted Word document from a story JSON.
 
@@ -262,7 +304,7 @@ def create_word_document(story_data: dict, output_dir: str = ".", image_dir: str
     cover_prompt = story_data.get("cover_image_prompt")
     if cover_prompt:
         image_report["expected_images"] += 1
-        cover_path = download_page_image(cover_prompt, "cover.jpg", image_dir=image_dir)
+        cover_path = download_page_image(cover_prompt, "cover.jpg", image_dir=image_dir, session_id=session_id)
         if cover_path:
             image_report["generated_images"] += 1
             doc.add_picture(cover_path, width=Inches(5.0))
@@ -289,7 +331,7 @@ def create_word_document(story_data: dict, output_dir: str = ".", image_dir: str
                 image_report["disabled_reason"] = _image_generation_disabled_reason
             else:
                 image_filename = f"page_{page_num}.jpg"
-                image_path = download_page_image(image_prompt, image_filename, image_dir=image_dir)
+                image_path = download_page_image(image_prompt, image_filename, image_dir=image_dir, session_id=session_id)
                 if image_path:
                     image_report["generated_images"] += 1
                 elif _image_generation_disabled_reason:

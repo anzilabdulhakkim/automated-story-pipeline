@@ -26,7 +26,7 @@ from datetime import datetime
 from typing import Any
 
 # Force UTF-8 output on Windows (avoids cp1252 UnicodeEncodeError for emoji)
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
 
 from config import CONFIG
 from story_generator import generate_story
@@ -307,7 +307,7 @@ async def process_single_story(
             )
 
             doc_start = time.time()
-            create_word_document(story_json, output_dir=CONFIG.output_dir, image_dir=image_folder)
+            create_word_document(story_json, output_dir=CONFIG.output_dir, image_dir=image_folder, session_id=session_id)
             doc_end = time.time()
             analytics["doc_generation_time_seconds"] = round(doc_end - doc_start, 2)
             analytics["image_report"] = story_json.get("_image_generation_report")
