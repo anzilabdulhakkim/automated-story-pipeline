@@ -382,6 +382,7 @@ class GeminiClient:
         self._semaphore = asyncio.Semaphore(CONFIG.max_concurrent_requests)
         # Sliding-window deque for RPM enforcement (timestamps of recent requests)
         self._request_timestamps: collections.deque = collections.deque()
+        self._rpm_lock = asyncio.Lock()
 
     # â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -574,24 +575,64 @@ class GeminiClient:
         sleeps if the window is already at capacity before recording a new slot.
         """
         window = 60.0
-        now = time.monotonic()
-        # Purge entries outside the rolling window
-        while self._request_timestamps and now - self._request_timestamps[0] > window:
-            self._request_timestamps.popleft()
+        
+        # Acquire the lock to ensure we evaluate and update the sliding window atomically
+        async with self._rpm_lock:
+            # We use a while loop because after sleeping, another task might have run
+            # and taken our slot. We must re-evaluate until a slot is truly free.
+            while True:
+                now = time.monotonic()
+                # Purge entries outside the rolling window
+                while self._request_timestamps and now - self._request_timestamps[0] > window:
+                    self._request_timestamps.popleft()
 
-        if len(self._request_timestamps) >= model_cfg.rpm_limit:
-            wait = window - (now - self._request_timestamps[0]) + 0.05
+                if len(self._request_timestamps) < model_cfg.rpm_limit:
+                    # We have capacity, break out and record our timestamp below
+                    break
+
+                # We are at capacity. Calculate sleep time and yield the lock while we sleep.
+                # Adding a small 50ms buffer to ensure we aren't precisely on the boundary
+                wait = window - (now - self._request_timestamps[0]) + 0.05
+                log.info(
+                    "RPM limit (%d/min) reached - waiting %.1fs before next call.",
+                    model_cfg.rpm_limit, wait,
+                )
+                
+                # We yield the lock so other tasks aren't needlessly blocked if they
+                # are just checking capacity or adding timestamps for *other* models 
+                # (though currently we only share one deque for all calls).
+                # To yield the lock cleanly, we can temporarily exit the context manager,
+                # sleep, and then re-acquire. A cleaner approach is to just await sleep
+                # but NOT hold the lock during the sleep. However, asyncio.Lock doesn't 
+                # have a simple `release() / await sleep / acquire()` pattern that is safe
+                # inside an async context manager cleanly without nested functions or manual 
+                # lock management. Thus:
+                pass 
+                
+            # Actually, a better pattern is to sleep OUTSIDE the lock to let other tasks 
+            # make progress, then re-acquire. 
+            # Let's write the idiomatic approach:
+            
+        # The idiomatic "wait for slot" pattern:
+        while True:
+            wait = 0.0
+            async with self._rpm_lock:
+                now = time.monotonic()
+                while self._request_timestamps and now - self._request_timestamps[0] > window:
+                    self._request_timestamps.popleft()
+                
+                if len(self._request_timestamps) < model_cfg.rpm_limit:
+                    self._request_timestamps.append(now)
+                    return
+                # Calculate sleep duration
+                wait = window - (now - self._request_timestamps[0]) + 0.05
+            
+            # Sleep outside the lock
             log.info(
                 "RPM limit (%d/min) reached - waiting %.1fs before next call.",
                 model_cfg.rpm_limit, wait,
             )
             await asyncio.sleep(wait)
-            # Re-purge after sleeping
-            now = time.monotonic()
-            while self._request_timestamps and now - self._request_timestamps[0] > window:
-                self._request_timestamps.popleft()
-
-        self._request_timestamps.append(time.monotonic())
 
     async def _raw_call(
         self,

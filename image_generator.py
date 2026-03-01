@@ -100,6 +100,7 @@ def _sanitize_image_prompt(prompt: str, *, is_cover: bool) -> str:
 # ---------------------------------------------------------------------------
 
 _imagen_client: "Optional[genai.Client]" = None
+_image_semaphore: "Optional[asyncio.Semaphore]" = None
 
 
 def _get_imagen_client() -> "genai.Client":
@@ -128,6 +129,10 @@ async def generate_image(
     Generate an image for a specific scene if the intent passes the router.
     Returns absolute file path on success, else None.
     """
+    global _image_semaphore
+    if _image_semaphore is None:
+        _image_semaphore = asyncio.Semaphore(CONFIG.max_concurrent_requests)
+        
     if _image_generation_disabled_reason:
         log.info(
             "Skipping image generation for %s (disabled: %s).",
@@ -170,35 +175,40 @@ async def generate_image(
     if not CONFIG.gemini_api_key:
         log.warning("Image skipped: GEMINI_API_KEY missing.")
         return None
-
     client = _get_imagen_client()  # module-level singleton — no new session per call
     max_retries = 3
 
     for attempt in range(max_retries):
         try:
-            image_cfg = genai_types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio="1:1",
-                output_mime_type="image/jpeg",
+            image_cfg = genai_types.GenerateContentConfig(
+                image_config=genai_types.ImageConfig(
+                    aspect_ratio="1:1"  # Only aspect ratio is supported for Gemini image models
+                )
             )
 
-            response = await client.aio.models.generate_images(
-                model=CONFIG.imagen_model,
-                prompt=prompt,
-                config=image_cfg,
-            )
+            # Gemini models require generate_content, not generate_images
+            async with _image_semaphore:
+                response = await client.aio.models.generate_content(
+                    model=CONFIG.imagen_model,
+                    contents=prompt,
+                    config=image_cfg,
+                )
 
-            if not response.generated_images:
-                log.error("Imagen API returned no images (attempt %s/%s).", attempt + 1, max_retries)
+            if not response.candidates or not response.candidates[0].content.parts:
+                log.error("Gemini Image API returned empty content (attempt %s/%s).", attempt + 1, max_retries)
                 if attempt < max_retries - 1:
                     await asyncio.sleep(5)
                 continue
 
-            generated = response.generated_images[0]
-            image_obj = getattr(generated, "image", None)
-            img_bytes = getattr(image_obj, "image_bytes", None)
+            # Extract image bytes from Gemini response by finding the first part with inline_data
+            img_bytes = None
+            for part in response.candidates[0].content.parts:
+                if getattr(part, "inline_data", None) and getattr(part.inline_data, "data", None):
+                    img_bytes = part.inline_data.data
+                    break
+
             if not img_bytes:
-                log.error("Imagen API returned empty image bytes (attempt %s/%s).", attempt + 1, max_retries)
+                log.error("Could not extract image bytes from Gemini response (attempt %s/%s).", attempt + 1, max_retries)
                 if attempt < max_retries - 1:
                     await asyncio.sleep(5)
                 continue
