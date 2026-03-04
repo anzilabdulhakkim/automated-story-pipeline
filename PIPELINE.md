@@ -26,7 +26,7 @@ This pipeline generates **personalized, age-appropriate children's picture books
 │    gemini_client.py      │                    │
 │  Async Gemini SDK client │                    │
 │  ┌────────────────────┐  │                    │
-│  │ router.py          │  │     Model: gemini-2.5-flash-image
+│  │ router.py          │  │     Model: gemini-3.1-flash-image-preview
 │  │ rate_limiter.py    │  │                    │
 │  │ cache.py           │  │                    │
 │  │ logger.py          │  │                    │
@@ -92,7 +92,7 @@ For each completed story JSON:
 
 ```
 1. Download cover image
-   └─ Model: gemini-2.5-flash-image (1:1 aspect ratio)
+   └─ Model: gemini-3.1-flash-image-preview (1:1 aspect ratio, 1K default resolution)
 
 2. For each page (8/12/18 depending on age):
    ├─ Download page image from image_prompt
@@ -227,10 +227,8 @@ Examples: "bedtime story about dinosaur", "story about brave girl", "moral story
 
 | Purpose | Model | Cost (per 1M tokens) |
 |---------|-------|---------------------|
-| Story text generation | `gemini-3-flash-preview` | $0.50 input / $3.00 output |
-| Image generation | `gemini-2.5-flash-image` | $0.03 per image |
-
-**Pro model (`gemini-1.5-pro`) is currently DISABLED** for cost efficiency.
+| Story text generation | `gemini-3-flash-preview`         | $0.50 input / $3.00 output per 1M tokens |
+| Image generation      | `gemini-3.1-flash-image-preview` | ~$0.067 per image (1K default, Vertex AI) |
 
 ---
 
@@ -248,9 +246,9 @@ Examples: "bedtime story about dinosaur", "story about brave girl", "moral story
 
 | Batch Size | Text Cost | Image Cost | Total Time |
 |------------|-----------|------------|------------|
-| 1 story | ~$0.001 | ~$0.24 - $0.54 | ~2-5 min |
-| 10 stories | ~$0.01 | ~$2.40 - $5.40 | ~20-50 min |
-| 100 stories | ~$0.12 | ~$24.00 - $54.00 | ~3-8 hours |
+| 1 story | ~$0.001 | ~$0.60 | ~2-5 min |
+| 10 stories | ~$0.01 | ~$6.00 | ~20-50 min |
+| 100 stories | ~$0.12 | ~$60.00 | ~3-8 hours |
 
 ---
 

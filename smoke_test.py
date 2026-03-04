@@ -2,9 +2,9 @@
 smoke_test.py — Phase 1 import + logic verification.
 Run: python smoke_test.py
 """
-import sys
-import os
 import io
+import os
+import sys
 
 # Force UTF-8 output on Windows (avoids cp1252 UnicodeEncodeError)
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -20,7 +20,6 @@ def fail(label, exc):
     print(f"  {FAIL}  {label}: {exc}")
     errors.append((label, exc))
 
-# ─── 1. config ──────────────────────────────────────────────────────────────
 print("\n[1] config.py")
 try:
     from config import CONFIG, FLASH_MODEL, PipelineConfig
@@ -36,10 +35,9 @@ try:
 except Exception as e:
     fail("config", e)
 
-# ─── 2. logger ──────────────────────────────────────────────────────────────
 print("\n[2] logger.py")
 try:
-    from logger import PipelineLogger, APICallRecord
+    from logger import APICallRecord, PipelineLogger
     # Use a temp log path so we don't pollute the real log
     test_logger = PipelineLogger(log_path="logs/_smoke_test.jsonl")
     record = APICallRecord(
@@ -64,7 +62,6 @@ try:
 except Exception as e:
     fail("logger", e)
 
-# ─── 3. cache ───────────────────────────────────────────────────────────────
 print("\n[3] cache.py")
 try:
     from cache import PipelineCache
@@ -81,10 +78,9 @@ try:
 except Exception as e:
     fail("cache", e)
 
-# ─── 4. rate_limiter ────────────────────────────────────────────────────────
 print("\n[4] rate_limiter.py")
 try:
-    from rate_limiter import RateLimiter, BudgetExhaustedError, SessionBudget
+    from rate_limiter import BudgetExhaustedError, RateLimiter, SessionBudget
     lim = RateLimiter(default_budget=1000, state_file="logs/_smoke_rate.json")
 
     # Fresh session — should NOT be at soft limit
@@ -99,26 +95,22 @@ try:
     lim.record_usage("sess-A", 150)
     assert lim.is_exhausted("sess-A"),         "1000/1000 should be exhausted"
 
-    # Status report
     report = lim.status_report()
     entry = next(r for r in report if r["session_id"] == "sess-A")
     ok(f"session-A: {entry['tokens_used']}/{entry['token_budget']}  exhausted={entry['exhausted']}")
 
-    # Reset
     lim.reset_session("sess-A")
     assert not lim.is_exhausted("sess-A"), "After reset should not be exhausted"
     ok("reset: PASS")
 
-    # Cleanup
     if os.path.exists("logs/_smoke_rate.json"):
         os.remove("logs/_smoke_rate.json")
 except Exception as e:
     fail("rate_limiter", e)
 
-# ─── 5. router ──────────────────────────────────────────────────────────────
 print("\n[5] router.py")
 try:
-    from router import RequestRouter, ModelTier
+    from router import ModelTier, RequestRouter
     rt = RequestRouter()
 
     cases = [
@@ -150,7 +142,12 @@ except Exception as e:
 # [6] gemini_client (import + dataclass checks — no live API call)
 print("\n[6] gemini_client.py (import + types check)")
 try:
-    from gemini_client import GenerationRequest, GenerationResponse, get_client, GeminiClient
+    from gemini_client import (
+        GeminiClient,
+        GenerationRequest,
+        GenerationResponse,
+        get_client,
+    )
 
     req = GenerationRequest(
         prompt="Tell me a story",
@@ -185,7 +182,6 @@ except Exception as e:
     fail("gemini_client", e)
 
 
-# ─── Summary ─────────────────────────────────────────────────────────────────
 print("="*55)
 if errors:
     print(f"  {len(errors)} FAILURE(S):")

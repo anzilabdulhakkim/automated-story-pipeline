@@ -1,30 +1,32 @@
 # Prajna Story Pipeline
 
-A production-grade pipeline for generating **personalized children's picture books** using Google gemini-3-flash-preview. Outputs fully formatted Word documents with AI-generated illustrations and age-appropriate text.
+A production-grade pipeline for generating personalized children's picture books using Google gemini-3-flash-preview. Outputs fully formatted Word documents with AI-generated illustrations and age-appropriate text.
 
 ---
 
-## ✨ Key Features
-
-- **📖 Full Prajna System Prompt** — Child-safe storytelling with safety protocol, silent reframing, age-based parameters, and visual consistency enforcement
-- **🎯 Age-Adaptive Output** — 8 pages (ages 3-5), 12 pages (ages 6-8), 18 pages (ages 9-12) with strict word count limits
-- **🎨 AI Image Generation** — Per-page illustrations via Imagen with character consistency lock and auto-repair guardrails
-- **📄 Word Document Output** — Side-by-side layout (image left, text right) with cover page
-- **⚡ Response Caching** — Same prompt never hits the API twice
-- **📉 Token Budgeting** — Soft-limit guardrails that auto-downgrade when 80% budget is spent
-- **📊 Detailed Analytics** — Per-call tracking of tokens, latency, and estimated USD cost based on latest paid-tier pricing
-
----
-
-## 🛠️ Setup
+## Setup Instructions
 
 ### 1. Prerequisites
 - Python 3.9+
-- A Google Gemini API Key ([aistudio.google.com](https://aistudio.google.com/))
+- A Google Gemini API Key (get from aistudio.google.com)
 
 ### 2. Installation
+
+**For Mac / Linux:**
+```bash
+cd ai-story-pipeline
+
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+**For Windows:**
 ```powershell
-cd story-ai-pipeline
+cd ai-story-pipeline
 
 # Create and activate virtual environment
 python -m venv venv
@@ -37,97 +39,98 @@ pip install -r requirements.txt
 ### 3. Environment Config
 Create a `.env` file in the root directory:
 ```env
-GEMINI_API_KEY="your_api_key_here"
-IMAGE_DELAY_SECONDS=4
+GEMINI_API_KEY=your_api_key_here
+
+# Text generation model
+GEMINI_TEXT_MODEL=your_text_model_name_here
+
+# Image generation model
+GEMINI_IMAGE_MODEL=your_image_model_name_here
+
+# Optional overrides (defaults shown)
+GEMINI_TEXT_RPM_LIMIT=2000
+IMAGEN_RPM_LIMIT=500
+IMAGEN_RPD_LIMIT=2000
+IMAGE_DELAY_SECONDS=1
 ```
 
 ---
 
-## 📁 Project Structure
+## Key Features
 
-| File | Purpose |
-|------|---------|
-| `generate.py` | **Main CLI entry point** — generates stories with Word docs |
-| `story_generator.py` | Prajna system prompt + user prompt builder → Gemini Flash |
-| `doc_builder.py` | Image generation + Word document assembly |
-| `gemini_client.py` | Async Gemini SDK client with retry, cache, rate limiting |
-| `router.py` | Model routing (Flash / Pro / Imagen classification) |
-| `rate_limiter.py` | Token budget management per session |
-| `cache.py` | Persistent file-based response caching |
-| `logger.py` | Structured JSONL logging for every API call |
-| `config.py` | Central configuration (models, limits, thresholds) |
-| `image_generator.py` | Imagen integration for batch_runner |
-| `batch_runner.py` | Async batch processor (alternative to generate.py) |
-| `analytics.py` | Post-run cost and token analytics |
-| `diagnostics.py` | Internal stress tests (rate limiter, concurrency) |
-| `smoke_test.py` | Module verification (6 modules) |
-| `PIPELINE.md` | Detailed technical documentation |
+- Full Prajna System Prompt — Child-safe storytelling with safety protocol, silent reframing, age-based parameters, and visual consistency enforcement
+- Age-Adaptive Output — 8 pages (ages 3-5), 12 pages (ages 6-8), 18 pages (ages 9-12) with strict word count limits
+- AI Image Generation — Per-page illustrations via Imagen with character consistency lock and auto-repair guardrails
+- Word Document Output — Side-by-side layout (image left, text right) with cover page
+- Response Caching — Same prompt never hits the API twice
+- Token Budgeting — Soft-limit guardrails that auto-downgrade when 80% budget is spent
+- Detailed Analytics — Per-call tracking of tokens, latency, and estimated USD cost based on latest paid-tier pricing
 
 ---
 
-## 📊 Story Configuration
+## Project Structure
 
-| Dimension | Count | Examples |
-|-----------|-------|---------|
-| **Child Profiles** | 10 | Leo (3), Rose (4), Noah (6), Olivia (11), Alex (12) |
-| **Categories** | 13 | Adventure, Fantasy, Friendship, Mythology, Sci-Fi |
-| **Tones** | 8 | Happy, Calm, Exciting, Funny, Inspirational |
-| **Moral Values** | 8 | Honesty, Kindness, Sharing, Forgiveness, Patience |
-| **Art Styles** | 5 | Disney3D, Watercolor, FlatVector, Anime, Clay |
-| **Prompts** | 95 | "bedtime story about dinosaur", "story about brave girl" |
-| **Total Combos** | **4,742,400** | Unique story configurations |
-
----
-
-## 🧠 Models
-
-| Purpose | Model | Status |
-|---------|-------|--------|
-| Story text generation | `gemini-3-flash-preview` | Paid tier |
-| Image generation | `gemini-2.5-flash-image` | Paid tier |
-| Complex/long tasks | `gemini-1.5-pro` | ⏸️ Disabled (cost savings) |
+| File                 | Purpose                                                     |
+|----------------------|-------------------------------------------------------------|
+| `generate.py`        | Main CLI entry point — generates stories with Word docs     |
+| `story_generator.py` | Prajna system prompt + user prompt builder -> Gemini Flash  |
+| `doc_builder.py`     | Image generation + Word document assembly                   |
+| `gemini_client.py`   | Async Gemini SDK client with retry, cache, rate limiting   |
+| `router.py`          | Model routing (Flash / Pro / Imagen classification)         |
+| `rate_limiter.py`    | Token budget management per session                         |
+| `cache.py`           | Persistent file-based response caching                      |
+| `logger.py`          | Structured JSONL logging for every API call                 |
+| `config.py`          | Central configuration (models, limits, thresholds)          |
+| `image_generator.py` | Imagen integration for batch_runner                         |
+| `batch_runner.py`    | Async batch processor (alternative to generate.py)          |
+| `analytics.py`       | Post-run cost and token analytics                           |
+| `diagnostics.py`     | Internal stress tests (rate limiter, concurrency)           |
+| `smoke_test.py`      | Module verification (6 modules)                             |
+| `PIPELINE.md`        | Detailed technical documentation                            |
 
 ---
 
-## 💰 Cost Estimates
+## Story Configuration
 
-| Batch Size | Text Cost (Paid Tier) | Time (text only) | Time (with images) |
-|------------|-----------|-------------------|---------------------|
-| 1 story | ~$0.008 | ~12s | ~1-2 min |
-| 10 stories | ~$0.08 | ~3 min | ~10-20 min |
-| 100 stories | ~$0.80 | ~30 min | ~1.5-3 hours |
+| Dimension         | Count     | Examples                                            |
+|-------------------|-----------|-----------------------------------------------------|
+| Profile Ages      | 10        | 3, 4, 6, 11, 12                                    |
+| Categories        | 13        | Adventure, Fantasy, Friendship, Mythology, Sci-Fi   |
+| Tones             | 8         | Happy, Calm, Exciting, Funny, Inspirational         |
+| Moral Values      | 8         | Honesty, Kindness, Sharing, Forgiveness, Patience   |
+| Art Styles        | 5         | Disney3D, Watercolor, FlatVector, Anime, Clay       |
+| Example Prompts   | 95        | "bedtime story about dinosaur", "brave girl"        |
 
 ---
 
-## 📋 Commands Reference
+## Models
+
+| Purpose               | Model                    | Status                     |
+|-----------------------|--------------------------|----------------------------|
+| Story text generation | `gemini-3-flash-preview` | Paid tier                  |
+| Image generation      | `gemini-3.1-flash-image-preview` | Paid tier          |
+
+---
+
+## Commands Reference
 
 ### Story Generation
-
-| Command | What It Does |
-|---------|-------------|
-| `python generate.py 1` | Generate 1 story with images + Word doc |
-| `python generate.py 5` | Generate 5 stories with full output |
-| `python generate.py 100` | Batch generate 100 stories |
-| `python generate.py 5 --text-only` | Generate 5 stories (JSON only, no images/docs — fast) |
-| `python generate.py 1 --dry-run` | Test run with mock data (no API calls, no cost) |
+- `python generate.py 1` : Generate 1 story with images + Word doc
+- `python generate.py 5` : Generate 5 stories with full output
+- `python generate.py 100` : Batch generate 100 stories
+- `python generate.py 5 --text-only` : Generate 5 stories (JSON only, no images/docs — fast)
+- `python generate.py 1 --dry-run` : Test run with mock data (no API calls, no cost)
 
 ### Monitoring & Diagnostics
+- `python analytics.py` : Show cost breakdown by model and task type from logs
+- `python diagnostics.py` : Stress test rate limiter, concurrency cap, history compression
+- `python smoke_test.py` : Verify all 6 pipeline modules are working correctly
 
-| Command | What It Does |
-|---------|-------------|
-| `python analytics.py` | Show cost breakdown by model and task type from logs |
-| `python diagnostics.py` | Stress test rate limiter, concurrency cap, history compression |
-| `python smoke_test.py` | Verify all 6 pipeline modules are working correctly |
-
-### Batch Runner (Alternative)
-
-| Command | What It Does |
-|---------|-------------|
-| `python batch_runner.py --config configs.json` | Run batch from a pre-built config JSON file |
-| `python batch_runner.py --config configs.json --dry-run` | Dry-run a batch (no API calls) |
-| `python batch_runner.py --config configs.json --force-fallback` | Test Pro → Flash fallback logic |
+### Batch Runner
+- `python batch_runner.py --config configs.json` : Run batch from a pre-built config JSON file
+- `python batch_runner.py --config configs.json --dry-run` : Dry-run a batch (no API calls)
 
 ---
 
-## 📜 License
+## License
 MIT

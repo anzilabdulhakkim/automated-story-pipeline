@@ -19,9 +19,9 @@ import time
 from typing import Any
 
 from config import CONFIG
+from image_generator import generate_image
 from logger import pipeline_logger
 from story_generator import generate_story
-from image_generator import generate_image
 
 # Set up console logging for the runner
 logging.basicConfig(
@@ -47,12 +47,12 @@ async def process_single_story(
     try:
         # 1. Generate text story
         story_result = await generate_story(
-            config, 
-            session_id, 
-            story_id, 
+            config,
+            session_id,
+            story_id,
             dry_run=dry_run
         )
-        
+
         # 2. Attempt image generation for first page (cover)
         image_path = None
         if not dry_run:
@@ -66,15 +66,15 @@ async def process_single_story(
                 f"Prajna_{config['target_age']}yr_"
                 f"{config['user_nickname']}_{safe_title}_{story_id[-6:]}.docx"
             )
-            
+
             image_dir = os.path.join(
                 CONFIG.story_images_dir,
                 f"{config['user_nickname']}_{safe_title}"
             )
-            
+
             pages = story_json.get("pages", [])
             first_page_prompt = pages[0].get("image_prompt", "A happy scene.") if pages else "A happy scene."
-            
+
             image_path = await generate_image(
                 scene_description=first_page_prompt,
                 config=config,
@@ -110,7 +110,7 @@ async def process_single_story(
     else:
         status = "partial_success_no_cover_image"
         log.warning(f"[{story_id}] Story generated but cover image is missing.")
-    
+
     return {
         "story_number": index + 1,
         "config": config,
@@ -139,20 +139,17 @@ async def main_async(config_path: str, dry_run: bool) -> None:
         sys.exit(1)
 
     log.info(f"Loaded {len(configs)} story configurations from {config_path}")
-    
+
     # Deriving output and session name
     base_name = os.path.basename(config_path)
     session_name = os.path.splitext(base_name)[0]
     out_name = base_name.replace("story_configs_", "generation_analytics_")
     if out_name == base_name:
         out_name = f"generation_analytics_{base_name}"
-    
+
     out_path = os.path.join(os.path.dirname(config_path), out_name)
 
     # Process all concurrently.
-    # The gemini_client internally caps the concurrency using its semaphore.
-    # return_exceptions=True ensures one crashed story never cancels the entire
-    # batch — each exception is collected and converted to an error record (#21).
     tasks = [
         process_single_story(i, cfg, session_name, dry_run)
         for i, cfg in enumerate(configs)

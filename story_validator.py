@@ -11,7 +11,6 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-
 SAFETY_SUFFIX = "--no text --no words --no letters"
 
 
@@ -117,7 +116,7 @@ def enforce_image_prompts(story_data: dict[str, Any], input_config: dict[str, An
         prompt = page.get("image_prompt", "")
         if not isinstance(prompt, str) or not prompt.strip():
             continue
-        
+
         if SAFETY_SUFFIX not in prompt:
             prompt = f"{prompt.strip()} {SAFETY_SUFFIX}"
         if char_desc and required_descriptor not in prompt:
@@ -218,7 +217,6 @@ def validate_story_output(story_data: dict[str, Any], input_config: dict[str, An
             text = ""
 
         actual_word_count = _count_words(text)
-        actual_char_count = len(text)
 
         if not (spec.min_words_per_page <= actual_word_count <= spec.max_words_per_page):
             errors.append(
