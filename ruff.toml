@@ -1,0 +1,18 @@
+[lint]
+select = [
+    "F",    # Pyflakes: undefined names, unused imports, unused variables
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "I",    # isort: import ordering
+]
+ignore = [
+    "E501", # line too long (handled by formatter)
+]
+
+[lint.per-file-ignores]
+"smoke_test.py" = ["F401", "E712"]  # imports are for side-effect validation; assert == True is intentional in tests
+"generate.py" = ["E402"]     # imports deferred intentionally (stdout encoding must run first)
+
+[format]
+quote-style = "double"
+indent-style = "space"

@@ -17,3 +17,6 @@ typing-extensions>=4.9
 # Document assembly (doc_builder.py)
 python-docx>=1.0
 Pillow>=10.0
+
+# Dev tooling
+ruff>=0.4

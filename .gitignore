@@ -1,9 +1,9 @@
-# ── Secrets (NEVER commit these) ──────────────────────────────────────────────
+# Secrets
 .env
 _env
 *.env
 
-# ── Python ────────────────────────────────────────────────────────────────────
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
@@ -16,7 +16,7 @@ env/
 dist/
 build/
 
-# ── Pipeline runtime outputs ───────────────────────────────────────────────────
+# Pipeline runtime outputs
 .cache/
 logs/
 story_images/
@@ -25,7 +25,10 @@ stories/
 configs/
 analytics/
 
-# ── OS / editor ───────────────────────────────────────────────────────────────
+# Ruff cache
+.ruff_cache/
+
+# OS / editor
 .DS_Store
 Thumbs.db
 *.swp
