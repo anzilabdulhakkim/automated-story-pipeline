@@ -1,25 +1,7 @@
 """
 logger.py — Structured observability layer.
 
-Every Gemini API call (or cache hit) writes a single JSON line to
-logs/api_calls.jsonl.  The analytics module reads this file to produce
-cost breakdowns and token distribution reports.
-
-Log schema
-----------
-{
-  "timestamp":        "2026-02-26T07:30:00+00:00",  # ISO-8601 UTC
-  "task_type":        "story_generation",
-  "model_used":       "gemini-2.0-flash",
-  "input_tokens":     512,
-  "output_tokens":    1024,
-  "latency_ms":       843.2,
-  "cost_usd_estimate": 0.000154,
-  "cache_hit":        false,
-  "story_id":         "batch1-story-0",            # optional
-  "router_decision":  "task type suitable for Flash",
-  "error":            null                          # error message if failed
-}
+Writes JSONL logs for API calls to disk for analytics.
 """
 
 from __future__ import annotations
@@ -27,14 +9,10 @@ from __future__ import annotations
 import json
 import os
 import threading
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
-
-# ---------------------------------------------------------------------------
-# Log Record
-# ---------------------------------------------------------------------------
 
 @dataclass
 class APICallRecord:
@@ -60,19 +38,10 @@ class APICallRecord:
         return self.input_tokens + self.output_tokens
 
 
-# ---------------------------------------------------------------------------
-# Logger
-# ---------------------------------------------------------------------------
 
 class PipelineLogger:
     """
     Thread-safe, append-only JSONL logger.
-
-    Usage
-    -----
-    logger = PipelineLogger()
-    logger.log(record)       # writes one JSON line
-    logger.log_error(...)    # shorthand for failed calls
     """
 
     def __init__(self, log_path: str = "logs/api_calls.jsonl") -> None:
@@ -85,7 +54,7 @@ class PipelineLogger:
         # switch to asyncio.Lock + aiofiles if write latency becomes an issue.
         self._lock = threading.Lock()
 
-    # ── Write ────────────────────────────────────────────────────────────────
+
 
     def log(self, record: APICallRecord) -> None:
         """Append one log line (thread-safe)."""
@@ -121,7 +90,7 @@ class PipelineLogger:
         )
         self.log(record)
 
-    # ── Read (for analytics) ─────────────────────────────────────────────────
+
 
     def read_all(self) -> list[dict]:
         """Read all log records from disk. Returns empty list if file missing."""
@@ -138,7 +107,7 @@ class PipelineLogger:
                         pass  # skip malformed lines
         return records
 
-    # ── Quick summary (printed at end of batch) ──────────────────────────────
+
 
     def print_session_summary(self) -> None:
         records = self.read_all()
