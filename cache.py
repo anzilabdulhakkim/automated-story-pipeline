@@ -1,27 +1,5 @@
 """
-cache.py — Two-layer response cache.
-
-Layer 1 — Exact-match (primary)
-    Key   : SHA-256(model + system_prompt + user_prompt)
-    Store : diskcache (SQLite-backed, survives restarts)
-    TTL   : configurable, default 1 hour
-    Use   : identical story configs → instant reply, zero API cost
-
-Layer 2 — Session-scoped in-memory index
-    A lightweight dict kept in process memory so the batch runner can
-    detect repeated configs within a run without a disk round-trip.
-
-Usage
------
-    from cache import response_cache
-
-    hit = response_cache.get(model_name, system_prompt, user_prompt)
-    if hit:
-        return hit  # no API call needed
-
-    ... call API ...
-
-    response_cache.set(model_name, system_prompt, user_prompt, result)
+cache.py — Two-layer response cache (diskcache + in-process session index).
 """
 
 from __future__ import annotations
@@ -30,10 +8,9 @@ import hashlib
 import json
 import os
 import time
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 # diskcache is the preferred backend; fall back to a plain JSON file when not
-# installed (e.g. first run before pip install).
 try:
     import diskcache as _diskcache
     _DISKCACHE_OK = True
@@ -45,9 +22,6 @@ if TYPE_CHECKING:
     import diskcache as diskcache_module
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _normalize_extra(extra: Any) -> str:
     if extra is None:
@@ -66,21 +40,10 @@ def _make_key(model: str, system_prompt: str, user_prompt: str, extra: Any = Non
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-# ---------------------------------------------------------------------------
-# Main Cache Class
-# ---------------------------------------------------------------------------
 
 class PipelineCache:
     """
     Persistent exact-match cache for Gemini API responses.
-
-    Parameters
-    ----------
-    cache_dir
-        Directory where cache data is stored.
-    ttl_seconds
-        Time-to-live for cached entries (seconds).  Tie this to your data
-        update frequency, not a fixed timer — see guide §3.
     """
 
     def __init__(self, cache_dir: str = ".cache", ttl_seconds: int = 3_600) -> None:
@@ -100,7 +63,7 @@ class PipelineCache:
             self._json_path = os.path.join(cache_dir, "response_cache.json")
             self._mem: dict[str, dict] = self._load_json()
 
-    # ── Public API ────────────────────────────────────────────────────────────
+    # Public API
 
     def get(
         self,
@@ -154,7 +117,7 @@ class PipelineCache:
     def backend(self) -> str:
         return "diskcache" if _DISKCACHE_OK else "json-file"
 
-    # ── Internal ──────────────────────────────────────────────────────────────
+    # Internal
 
     def _fetch(self, key: str) -> Optional[Any]:
         if _DISKCACHE_OK:

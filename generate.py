@@ -29,8 +29,8 @@ from typing import Any
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
 
 from config import CONFIG
-from story_generator import generate_story
 from doc_builder import create_word_document
+from story_generator import generate_story
 
 
 def _configure_event_loop_policy() -> None:
@@ -47,10 +47,6 @@ def _configure_event_loop_policy() -> None:
         # Non-fatal: keep default policy if unavailable.
         pass
 
-
-# ---------------------------------------------------------------------------
-# Story Configuration Data (from generate_100.py)
-# ---------------------------------------------------------------------------
 
 CATEGORIES = [
     "Family", "Friendship", "Love", "Adventure", "Animals", "Fantasy",
@@ -185,10 +181,6 @@ USER_TEXT_PROMPTS = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Config Generator
-# ---------------------------------------------------------------------------
-
 def generate_story_configs(amount: int = 1) -> list[dict[str, Any]]:
     """Generate random story configuration dicts."""
     configs = []
@@ -208,10 +200,6 @@ def generate_story_configs(amount: int = 1) -> list[dict[str, Any]]:
     return configs
 
 
-# ---------------------------------------------------------------------------
-# Single Story Pipeline
-# ---------------------------------------------------------------------------
-
 def save_story_as_markdown(story_json: dict, config: dict) -> str:
     """Save the story as a clean Markdown file for visibility."""
     os.makedirs("stories", exist_ok=True)
@@ -228,13 +216,13 @@ def save_story_as_markdown(story_json: dict, config: dict) -> str:
     md.append(f"# {story_json.get('title', 'Untitled')}")
     md.append(f"\n**Target Age:** {story_json.get('target_age_confirmation', '?')} | **Category:** {story_json.get('story_category', '?')} | **Moral:** {story_json.get('moral_value', '?')}")
     md.append(f"\n> **Synopsis:** {story_json.get('synopsis', '')}")
-    md.append(f"\n---\n")
+    md.append("\n---\n")
 
     for page in story_json.get("pages", []):
         md.append(f"### Page {page.get('page_number', '?')}")
         md.append(f"\n{page.get('text', '')}")
         md.append(f"\n*Image Prompt:* {page.get('image_prompt', '')}")
-        md.append(f"\n---\n")
+        md.append("\n---\n")
 
     with open(filepath, "w", encoding="utf-8") as f:
         f.write("\n".join(md))
@@ -272,7 +260,6 @@ async def process_single_story(
         print(f"  Prompt: {config['user_text']}")
         print(f"{'='*55}")
 
-        # ── 1. Generate story text via pipeline ──────────────────────
         text_start = time.time()
         result = await generate_story(
             config, session_id, story_id, dry_run=dry_run,
@@ -285,11 +272,9 @@ async def process_single_story(
         print(f"     Pages: {story_json.get('total_pages', '?')} | "
               f"Time: {analytics['text_generation_time_seconds']}s")
 
-        # ── 2. Save Markdown Version (Always) ──────────────────────
         md_path = save_story_as_markdown(story_json, config)
         print(f"     📝 Story saved to: {md_path}")
 
-        # ── 2. Build Word document with images (unless text-only) ────
         if not text_only and not dry_run:
             safe_title = "".join(
                 c for c in story_json.get("title", f"Story_{index+1}")
@@ -343,10 +328,6 @@ async def process_single_story(
     return analytics
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-
 async def main_async(amount: int, dry_run: bool, text_only: bool) -> None:
     """Run the full generation pipeline."""
     # Ensure directories exist
@@ -385,7 +366,7 @@ async def main_async(amount: int, dry_run: bool, text_only: bool) -> None:
         ]
         # return_exceptions=True for fault isolation (#21)
         raw_results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         # Post-process results (convert exceptions to records)
         for i, r in enumerate(raw_results):
             if isinstance(r, Exception):
@@ -417,7 +398,7 @@ async def main_async(amount: int, dry_run: bool, text_only: bool) -> None:
     partial = sum(1 for a in analytics_data if str(a.get("status", "")).startswith("partial_success"))
     failed = amount - success - partial
     print(f"\n{'='*55}")
-    print(f"  Pipeline Complete!")
+    print("  Pipeline Complete!")
     print(f"  ✅ Success: {success}  ⚠️ Partial: {partial}  ❌ Failed: {failed}")
     print(f"  📊 Analytics: {analytics_file}")
     print(f"{'='*55}\n")

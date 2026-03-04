@@ -1,22 +1,5 @@
 """
 rate_limiter.py — Per-session token budget tracking.
-
-Strategy (from the guide §5)
-    - Track tokens used per session/user in real time
-    - At SOFT_LIMIT (80% of budget) → force Flash downgrade before hitting
-      the hard quota
-    - Persist budget state to disk so it survives process restarts within
-      the same billing window
-
-Usage
------
-    from rate_limiter import rate_limiter
-
-    if rate_limiter.should_downgrade(session_id):
-        tier = ModelTier.FLASH          # cheap model
-
-    ... after call ...
-    rate_limiter.record_usage(session_id, input_tokens + output_tokens)
 """
 
 from __future__ import annotations
@@ -37,9 +20,6 @@ log = logging.getLogger(__name__)
 BUDGET_WINDOW_SECONDS: float = 86_400  # 24 hours
 
 
-# ---------------------------------------------------------------------------
-# Session Budget Dataclass
-# ---------------------------------------------------------------------------
 
 @dataclass
 class SessionBudget:
@@ -50,7 +30,7 @@ class SessionBudget:
     image_quota_exceeded: bool = False
     last_reset:   float = field(default_factory=time.time)
 
-    # ── Computed properties ───────────────────────────────────────────────────
+
 
     @property
     def tokens_remaining(self) -> int:
@@ -83,23 +63,10 @@ class SessionBudget:
         return cls(**data)
 
 
-# ---------------------------------------------------------------------------
-# Rate Limiter
-# ---------------------------------------------------------------------------
 
 class RateLimiter:
     """
-    Tracks token and image usage per session and enforces budgets:
-
-    [Text]
-    soft limit (80%)  → route to Flash instead of Pro
-    hard limit (100%) → raise BudgetExhaustedError
-
-    [Images]
-    Daily limit (RPD) → prevents further calls once reached
-    Circuit Breaker   → trips if a "Quota Exceeded" error is received
-
-    State is persisted to ``logs/rate_limits.json``.
+    Tracks token and image usage per session and enforces budgets.
     """
 
     def __init__(
@@ -115,7 +82,7 @@ class RateLimiter:
         os.makedirs(os.path.dirname(state_file), exist_ok=True)
         self._load_state()
 
-    # ── Public API ────────────────────────────────────────────────────────────
+
 
     def get_or_create(self, session_id: str) -> SessionBudget:
         with self._lock:
@@ -139,7 +106,7 @@ class RateLimiter:
                     self._save_state()
             return self._sessions[session_id]
 
-    # ── Text Budget ───────────────────────────────────────────────────────────
+
 
     def should_downgrade(self, session_id: str) -> bool:
         """Return True when session has used ≥80% of its token budget."""
@@ -156,7 +123,7 @@ class RateLimiter:
             self._save_state()
             return session
 
-    # ── Image Quota & Circuit Breaker ────────────────────────────────────────
+
 
     def check_imagen_quota(self, session_id: str) -> bool:
         """
@@ -188,7 +155,7 @@ class RateLimiter:
                 log.error("IMAGE CIRCUIT BREAKER TRIPPED for session %s: %s", session_id, reason)
                 self._save_state()
 
-    # ── Management ────────────────────────────────────────────────────────────
+
 
     def reset_session(self, session_id: str, new_budget: Optional[int] = None) -> None:
         """Reset a session's usage counter."""
@@ -217,7 +184,7 @@ class RateLimiter:
                 for s in self._sessions.values()
             ]
 
-    # ── Persistence ───────────────────────────────────────────────────────────
+
 
     def _load_state(self) -> None:
         if not os.path.exists(self.state_file):
