@@ -1,33 +1,7 @@
 ﻿"""
-gemini_client.py â€” Production-grade async Gemini API client.
+gemini_client.py — Production-grade async Gemini API client.
 
-Uses the current `google-genai` SDK (google.genai.Client).
-The old `google.generativeai` package is fully deprecated.
-
-Implements every non-negotiable from the guide Â§8:
-    [OK] Explicit max_output_tokens on every call
-    [OK] stop_sequences configurable per request
-    [OK] JSON / structured output enforcement (response_mime_type)
-    [OK] Exponential backoff + jitter via tenacity (429 / 503)
-    [OK] Pro -> Flash automatic fallback chain
-    [OK] Token usage + cost logged on every call
-    [OK] Async (non-blocking) â€” uses client.aio.models.generate_content
-    [OK] Concurrency capped via asyncio.Semaphore
-    [OK] Cache checked before every call
-
-Architecture
-------------
-    GeminiClient.generate(request)
-        |
-        +-- check cache         -> return cached GenerationResponse (0 cost)
-        +-- route (router.py)   -> ModelTier
-        +-- check rate-limit    -> may override tier to Flash
-        +-- _call_with_retry()  -> tenacity async retry loop
-        |   +-- primary model   -> try N times with backoff
-        |   +-- Flash fallback  -> if Pro fails (429/503/quota)
-        +-- cache result
-        +-- record rate-limit usage
-        +-- log APICallRecord   -> logs/api_calls.jsonl
+Handles caching, rate-limiting, retries, and generation requests using the google-genai SDK.
 """
 
 from __future__ import annotations
@@ -60,9 +34,6 @@ from router import ModelTier, RouterDecision, router
 log = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Request / Response dataclasses
-# ---------------------------------------------------------------------------
 
 @dataclass
 class GenerationRequest:
@@ -112,9 +83,6 @@ class GenerationResponse:
         return self.input_tokens + self.output_tokens
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _is_retryable(exc: BaseException) -> bool:
     """True for transient errors that warrant an exponential-backoff retry."""
@@ -153,9 +121,6 @@ def _wait_respecting_server_hint(retry_state) -> float:
 def _model_cfg(tier: ModelTier) -> ModelConfig:
     if tier == ModelTier.IMAGEN:
         raise ValueError("Model tier 'imagen' is not valid for text generation calls.")
-    # NOTE: Pro model is intentionally disabled. Everything resolves to Flash.
-    # The Pro scaffolding (pro_token_threshold, ModelTier.FLASH/PRO) is preserved
-    # for future activation but will NOT be used until a Pro ModelConfig is added.
     return FLASH_MODEL
 
 
@@ -343,9 +308,6 @@ def _build_mock_story(request: GenerationRequest) -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# Gemini Client
-# ---------------------------------------------------------------------------
 
 class GeminiClient:
     """
@@ -384,26 +346,24 @@ class GeminiClient:
         self._request_timestamps: collections.deque = collections.deque()
         self._rpm_lock = asyncio.Lock()
 
-    # â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
     async def generate(self, request: GenerationRequest) -> GenerationResponse:
         """
-        Full pipeline: cache -> route -> rate-limit -> call (retry+fallback)
+        Full pipeline: cache -> route -> rate-limit -> call
         -> cache store -> log.
         """
         async with self._semaphore:
             return await self._generate_inner(request)
 
-    # â”€â”€ Pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
     async def _generate_inner(self, request: GenerationRequest) -> GenerationResponse:
-        # 1. Rate-limit hard stop
         if rate_limiter.is_exhausted(request.session_id):
             raise BudgetExhaustedError(
                 f"Session '{request.session_id}' has exhausted its token budget."
             )
 
-        # 2. Route (may force Flash if session is near soft limit)
         decision: RouterDecision = router.route(
             user_text=request.prompt,
             task_type=request.task_type,
@@ -419,7 +379,6 @@ class GeminiClient:
             )
         log.debug("Router: %s", decision)
 
-        # 3. Cache lookup
         cache_enabled = not request.dry_run
         cache_extra = _cache_fingerprint(request)
         model_cfg    = _model_cfg(decision.tier)
@@ -455,7 +414,6 @@ class GeminiClient:
                 router_decision=decision,
             )
 
-        # 4. Call model (retry with exponential backoff)
         gen_cfg = _build_config(model_cfg=model_cfg, request=request)
         t0      = time.perf_counter()
         text, in_tok, out_tok = await self._call_with_retry(
@@ -466,15 +424,9 @@ class GeminiClient:
         used_model_name = model_cfg.name
         latency_ms = (time.perf_counter() - t0) * 1_000
 
-        # 5. Cost estimate
         cost = FLASH_MODEL.estimate_cost(in_tok, out_tok)
 
-        # 6. Rate-limit usage is now recorded per-attempt inside _call_with_retry (#22)
-        #    so we do not call record_usage here to avoid double-counting.
-
-        # 7. Store result in cache — guard against caching empty/blocked responses (Issue #20)
-        # A safety-blocked response returns "" which would permanently poison the cache
-        # for up to 7 days. Raise immediately so callers can handle it.
+        # Guard against caching empty requests
         if not text or not text.strip():
             raise ValueError(
                 f"Model returned an empty response for task '{request.task_type}'. "
@@ -489,7 +441,6 @@ class GeminiClient:
                 extra=cache_extra,
             )
 
-        # 8. Log to JSONL
         pipeline_logger.log(APICallRecord(
             timestamp=_now_iso(),
             task_type=request.task_type,
@@ -514,7 +465,7 @@ class GeminiClient:
             router_decision=decision,
         )
 
-    # â”€â”€ Fallback chain â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 
     async def _call_with_retry(
@@ -564,7 +515,7 @@ class GeminiClient:
                     raise
         raise RuntimeError("Retry loop exited without yielding a result.")
 
-    # â”€â”€ Raw SDK call â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 
     async def _enforce_rpm(self, model_cfg: ModelConfig) -> None:
@@ -575,7 +526,7 @@ class GeminiClient:
         sleeps if the window is already at capacity before recording a new slot.
         """
         window = 60.0
-        
+
         # Acquire the lock to ensure we evaluate and update the sliding window atomically
         async with self._rpm_lock:
             # We use a while loop because after sleeping, another task might have run
@@ -597,36 +548,23 @@ class GeminiClient:
                     "RPM limit (%d/min) reached - waiting %.1fs before next call.",
                     model_cfg.rpm_limit, wait,
                 )
-                
-                # We yield the lock so other tasks aren't needlessly blocked if they
-                # are just checking capacity or adding timestamps for *other* models 
-                # (though currently we only share one deque for all calls).
-                # To yield the lock cleanly, we can temporarily exit the context manager,
-                # sleep, and then re-acquire. A cleaner approach is to just await sleep
-                # but NOT hold the lock during the sleep. However, asyncio.Lock doesn't 
-                # have a simple `release() / await sleep / acquire()` pattern that is safe
-                # inside an async context manager cleanly without nested functions or manual 
-                # lock management. Thus:
-                pass 
-                
-            # Actually, a better pattern is to sleep OUTSIDE the lock to let other tasks 
-            # make progress, then re-acquire. 
-            # Let's write the idiomatic approach:
-            
-        # The idiomatic "wait for slot" pattern:
+
+                pass
+
+
         while True:
             wait = 0.0
             async with self._rpm_lock:
                 now = time.monotonic()
                 while self._request_timestamps and now - self._request_timestamps[0] > window:
                     self._request_timestamps.popleft()
-                
+
                 if len(self._request_timestamps) < model_cfg.rpm_limit:
                     self._request_timestamps.append(now)
                     return
                 # Calculate sleep duration
                 wait = window - (now - self._request_timestamps[0]) + 0.05
-            
+
             # Sleep outside the lock
             log.info(
                 "RPM limit (%d/min) reached - waiting %.1fs before next call.",
@@ -678,11 +616,8 @@ class GeminiClient:
         return text, in_tokens, out_tokens
 
 
-# ---------------------------------------------------------------------------
-# Lazy module-level singleton
-# ---------------------------------------------------------------------------
+
 # Using a factory function avoids asyncio.Semaphore creation or genai.Client()
-# running at import time, which can cause hangs in subprocesses / test runners.
 
 _client_instance: Optional[GeminiClient] = None
 

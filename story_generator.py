@@ -15,19 +15,16 @@ from typing import Any, Optional
 from config import CONFIG
 from gemini_client import GenerationRequest, get_client
 from logger import APICallRecord, pipeline_logger
-from router import ModelTier
-from story_validator import enforce_word_bounds, normalize_story_metadata, validate_story_output
+from story_validator import (
+    enforce_word_bounds,
+    normalize_story_metadata,
+    validate_story_output,
+)
 
 log = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Prompts
-# ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Prajna — Production System Prompt
-# ---------------------------------------------------------------------------
 STORY_SYSTEM_PROMPT = """
 ## SYSTEM ROLE
 
@@ -508,18 +505,18 @@ def compress_history(
     keep_turns = CONFIG.max_history_turns if max_turns is None else max_turns
     if not history or len(history) <= keep_turns:
         return history
-    
+
     # In a real production app, this would use a lightweight local model or Flash
     # to summarize the older turns. For this pipeline layer, we truncate and append
     # a system note indicating compression occurred.
     retained = history[-keep_turns:]
     omitted_count = len(history) - keep_turns
-    
+
     compressed_marker = {
         "role": "user",
         "parts": [f"[SYSTEM NOTE: The previous {omitted_count} turns of conversation have been omitted for context window management. Continue the story seamlessly.]"]
     }
-    
+
     return [compressed_marker] + retained
 
 
@@ -583,9 +580,7 @@ def _build_repair_prompt(
     )
 
 
-# ---------------------------------------------------------------------------
-# Generator
-# ---------------------------------------------------------------------------
+
 
 async def generate_story(
     config: dict[str, Any],
@@ -599,12 +594,17 @@ async def generate_story(
 
     Raises on generation failure or JSON parse failure.
     """
+    # TEMP OVERRIDE: Clamp age to 3-5 max for current testing
+    try:
+        config["target_age"] = max(3, min(5, int(config.get("target_age", 5))))
+    except (ValueError, TypeError):
+        config["target_age"] = 5
+
     user_prompt = _build_user_prompt(config)
     client      = get_client()
 
     log.info(f"[{story_id}] Generating story via pipeline...")
 
-    # 1. Compress history to prevent token explosion
     raw_history = config.get("history", [])
     compressed_history = compress_history(raw_history, CONFIG.max_history_turns)
 

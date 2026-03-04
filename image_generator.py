@@ -1,12 +1,5 @@
 """
-image_generator.py - Imagen integration.
-
-Used by batch paths that request a cover or scene image.
-Implements:
-1. Router intent gate
-2. Local file cache
-3. Retry only for transient errors
-4. Fail-fast disable on non-retryable API errors (e.g. billing/access)
+image_generator.py — Imagen integration for batch cover and scene image generation.
 """
 
 from __future__ import annotations
@@ -95,9 +88,6 @@ def _sanitize_image_prompt(prompt: str, *, is_cover: bool) -> str:
     return f"{prompt}, {no_text_clause}"
 
 
-# ---------------------------------------------------------------------------
-# Module-level Imagen client singleton (mirrors doc_builder._get_image_client)
-# ---------------------------------------------------------------------------
 
 _imagen_client: "Optional[genai.Client]" = None
 _image_semaphore: "Optional[asyncio.Semaphore]" = None
@@ -132,7 +122,7 @@ async def generate_image(
     global _image_semaphore
     if _image_semaphore is None:
         _image_semaphore = asyncio.Semaphore(CONFIG.max_concurrent_requests)
-        
+
     if _image_generation_disabled_reason:
         log.info(
             "Skipping image generation for %s (disabled: %s).",
