@@ -1,6 +1,6 @@
 # Automated Story Pipeline
 
-A proprietary, production-grade automated pipeline for generating personalized children's picture books using Google Gemini. This backend engine handles the entire lifecycle: taking basic inputs, generating age-appropriate stories, calling Google Imagen for page-by-page illustrations, and assembling the final output into fully formatted Microsoft Word (.docx) documents.
+An open-source, production-grade automated pipeline for generating personalized children's picture books using Google Gemini. This backend engine handles the entire lifecycle: taking basic inputs, generating age-appropriate stories, calling Google Imagen for page-by-page illustrations, and assembling the final output into fully formatted Microsoft Word (.docx) documents.
 
 ---
 
@@ -14,7 +14,7 @@ A proprietary, production-grade automated pipeline for generating personalized c
 
 **For Mac / Linux:**
 ```bash
-# Clone the repository (must have private access)
+git clone https://github.com/anzilabdulhakkim/automated-story-pipeline.git
 cd automated-story-pipeline
 
 # Create and activate virtual environment
