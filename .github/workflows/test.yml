@@ -24,5 +24,9 @@ jobs:
       run: |
         ruff check .
     - name: Test with pytest
+      env:
+        GEMINI_API_KEY: "dummy_key_for_tests"
+        GEMINI_TEXT_MODEL: "gemini-2.5-flash"
+        GEMINI_IMAGE_MODEL: "imagen-3.0-generate-002"
       run: |
         python -m pytest
