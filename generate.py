@@ -285,12 +285,12 @@ async def process_single_story(
                 c for c in story_json.get("title", f"Story_{index+1}")
                 if c.isalnum() or c in " _-"
             ).strip()
-            
+
             safe_nickname = "".join(
                 c for c in config.get("user_nickname", "Alex")
                 if c.isalnum() or c in " _-"
             ).strip()
-            
+
             story_json["output_filename"] = (
                 f"StoryPipeline_{config['target_age']}yr_"
                 f"{safe_nickname}_{safe_title}_{story_id[-6:]}.docx"

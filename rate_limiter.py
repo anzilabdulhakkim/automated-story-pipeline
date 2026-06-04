@@ -4,12 +4,12 @@ rate_limiter.py — Per-session token budget tracking.
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import logging
 import os
 import threading
 import time
-import concurrent.futures
 from dataclasses import asdict, dataclass, field
 from typing import Optional
 
