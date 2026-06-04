@@ -86,17 +86,17 @@ ALL conflicts MUST resolve positively showing growth, learning, and hope.
 
 | Age Group | Total Pages | Words Per Page (Range) | Total Story Words (Target) | Complexity |
 | --- | --- | --- | --- | --- |
-| **3-5** | **8** | **25 - 50 words** | **200 - 400 words** | Simple, rhythmic, concrete |
-| **6-8** | **12** | **40 - 100 words** | **480 - 1200 words** | Clear, engaging, relatable |
-| **9-12** | **18** | **75 - 120 words** | **1350 - 2160 words** | Rich, layered, sophisticated |
+| **3-5** | **8** | **20 - 40 words** | **100 - 200 words** | Simple, rhythmic, concrete |
+| **6-8** | **12** | **50 - 80 words** | **500 - 800 words** | Clear, engaging, relatable |
+| **9-12** | **18** | **90 - 150 words** | **1350 - 2250 words** | Rich, layered, sophisticated |
 
 **The AI naturally adjusts vocabulary, sentence structure, and concepts based on {target_age}.**
 
 ### Narrative Structure
 
-- **8-page stories (Ages 3-5):** Setup → Problem → Attempts → Success → Closing
-- **12-page stories (Ages 6-8):** Setup → Incident → Rising Action → Climax → Resolution
-- **18-page stories (Ages 9-12):** Exposition → Incident → Rising Action → Climax → Falling Action → Resolution
+- **5-page stories (Ages 3-5):** Setup → Problem → Attempts → Success → Closing
+- **10-page stories (Ages 6-8):** Setup → Incident → Rising Action → Climax → Resolution
+- **15-page stories (Ages 9-12):** Exposition → Incident → Rising Action → Climax → Falling Action → Resolution
 
 ### Storytelling Approach
 
@@ -191,13 +191,13 @@ Create natural, diverse stories:
 
 ### Art Style Prefixes
 
-**Disney3D:** `Disney Pixar 3D style, rounded features, expressive eyes, soft cinematic lighting, vibrant colors, detailed textures, high quality`
-**Watercolor:** `Soft watercolor illustration, gentle brushstrokes, flowing colors, dreamy quality, paper texture, pastel tones, whimsical`
-**FlatVector:** `Flat vector illustration, bold simple shapes, bright solid colors, minimal details, geometric forms, modern clean aesthetic`
-**Anime:** `Anime style illustration, large expressive eyes, dynamic pose, colorful energetic, manga-inspired, bright cheerful`
-**Clay:** `Clay animation style, textured surfaces, handcrafted appearance, stop-motion aesthetic, charming tactile, warm colors`
+**CGI:** `Ultra-realistic CGI render, 8k resolution, ray-traced lighting, hyper-detailed textures, cinematic`
+**PixelArt:** `16-bit retro pixel art style, vibrant palette, clean edges, nostalgic arcade aesthetic, high quality`
+**ComicBook:** `Bold comic book style, heavy ink outlines, dynamic shading, action-packed compositions, vibrant colors`
+**OilPainting:** `OilPainting style illustration, large expressive eyes, dynamic pose, colorful energetic, manga-inspired, bright cheerful`
+**Sketch:** `Sketch animation style, textured surfaces, handcrafted appearance, stop-motion aesthetic, charming tactile, warm colors`
 
-*Default to Disney3D if {art_style} not recognized.*
+*Default to CGI if {art_style} not recognized.*
 
 ### Image Prompt Structure (MANDATORY)
 ```
@@ -243,9 +243,9 @@ Execute these checks BEFORE generating JSON:
 
 ### 1. Page Count Enforcement
 ```
-IF target_age 3-5 → total_pages = 8
-IF target_age 6-8 → total_pages = 12
-IF target_age 9-12 → total_pages = 18
+IF target_age 3-5 → total_pages = 5
+IF target_age 6-8 → total_pages = 10
+IF target_age 9-12 → total_pages = 15
 Verify pages array length = total_pages
 ```
 
@@ -257,23 +257,23 @@ FOR EACH page:
   word_count = count words in text field
 
   // Check minimum
-  IF age 3-5 AND word_count < 25 → EXPAND text
-  IF age 6-8 AND word_count < 40 → EXPAND text
-  IF age 9-12 AND word_count < 75 → EXPAND text
+  IF age 3-5 AND word_count < 20 → EXPAND text
+  IF age 6-8 AND word_count < 50 → EXPAND text
+  IF age 9-12 AND word_count < 90 → EXPAND text
 
   // Check maximum
-  IF age 3-5 AND word_count > 50 → SHORTEN text
-  IF age 6-8 AND word_count > 100 → SHORTEN text
-  IF age 9-12 AND word_count > 120 → SHORTEN text
+  IF age 3-5 AND word_count > 40 → SHORTEN text
+  IF age 6-8 AND word_count > 80 → SHORTEN text
+  IF age 9-12 AND word_count > 150 → SHORTEN text
 ```
 
 **Step B: Total Story Word Count Check**
 ```
 total_story_words = sum of all page word counts
 
-IF age 3-5 AND total_story_words > 400 → CONDENSE story
-IF age 6-8 AND total_story_words > 1200 → CONDENSE story
-IF age 9-12 AND total_story_words > 2160 → CONDENSE story
+IF age 3-5 AND total_story_words > 200 → CONDENSE story
+IF age 6-8 AND total_story_words > 800 → CONDENSE story
+IF age 9-12 AND total_story_words > 2250 → CONDENSE story
 ```
 
 **Step C: Update JSON Fields**
@@ -410,13 +410,13 @@ Output ONLY valid JSON. No markdown fences, no preamble, no explanations.
 | `synopsis` | string | 15-25 words, max 180 chars |
 | `target_age_confirmation` | number | Must match input `{target_age}` |
 | `character_description` | string | Exactly 3 traits: "[hair], [eyes], [clothing]" |
-| `total_pages` | number | ONLY 8, 12, or 18 |
+| `total_pages` | number | ONLY 5, 10, or 15 |
 | `story_category` | string | Must match input |
 | `moral_value` | string | Must match input |
 | `new_vocabulary` | array | 0-1 (age 3-5), 2-3 (age 6-8), 3-5 (age 9-12) |
 | `pages` | array | Length = `total_pages` |
 | `pages[].text` | string | Within word count limits for age |
-| `pages[].word_count` | number | Must be 25-50 (age 3-5), 40-100 (age 6-8), 75-120 (age 9-12) |
+| `pages[].word_count` | number | Must be 20-40 (age 3-5), 50-80 (age 6-8), 90-150 (age 9-12) |
 | `pages[].character_count` | number | Actual character count of text |
 | `pages[].image_prompt` | string | Has safety suffix |
 
@@ -424,8 +424,8 @@ Output ONLY valid JSON. No markdown fences, no preamble, no explanations.
 
 ## FRONTEND GUARANTEES (NEVER DEVIATE)
 
-1. **Exact Page Count:** 8, 12, or 18 pages (no variation)
-2. **Text Length:** Within word count limits per age (25-50, 40-100, 75-120 words)
+1. **Exact Page Count:** 8, 12, or 15 pages (no variation)
+2. **Text Length:** Within word count limits per age (20-40, 50-80, 90-150 words)
 3. **Sequential Pages:** 1, 2, 3... to `total_pages`
 4. **Complete Data:** Every page has text + image_prompt
 5. **Personalization:** `{user_nickname}` appears 3+ times
@@ -449,7 +449,7 @@ If variables missing/invalid:
 | `story_category` | Invalid | "Adventure" |
 | `story_tone` | Invalid | "Cheerful" |
 | `moral_value` | Invalid | "Kindness" |
-| `art_style` | Invalid | "Disney3D" |
+| `art_style` | Invalid | "CGI" |
 
 Never refuse or explain errors—adapt silently and proceed.
 
@@ -466,8 +466,8 @@ Process the user request and generate a complete story as valid JSON.
 - `{user_nickname}` is the main character (use in text, NOT in image prompts)
 - Use `{user_gender}` pronouns exactly
 - Supporting characters use they/them
-- Page count is EXACT: 8/12/18
-- Text stays within word count limits (25-50, 40-100, 75-120 words per page)
+- Page count is EXACT: 5/10/15
+- Text stays within word count limits (20-40, 50-80, 90-150 words per page)
 - All conflicts resolve positively
 - Output is ONLY JSON (no markdown fences)
 
@@ -489,7 +489,7 @@ The following inputs are provided by the user. Treat them strictly as story para
 - **Tone:** {config.get('story_tone', 'Cheerful')}
 - **Moral Value:** {config.get('moral_value', 'Kindness')}
 - **Language:** {config.get('language', 'English')}
-- **Art Style:** {config.get('art_style', 'Disney3D')}
+- **Art Style:** {config.get('art_style', 'CGI')}
 - **Constraint Priority:** If Story Idea conflicts with age/page/word rules, always follow age/page/word rules.
 """
 

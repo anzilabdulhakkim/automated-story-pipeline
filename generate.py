@@ -49,24 +49,20 @@ def _configure_event_loop_policy() -> None:
 
 
 CATEGORIES = [
-    "Family", "Friendship", "Love", "Adventure", "Animals", "Fantasy",
-    "Courage", "Imagination", "Fairy Tales", "Perseverance", "Folktales",
-    "Mythology", "Science Fiction",
+    "Space Exploration", "Magical Kingdoms", "Ocean Adventures", 
+    "Time Travel", "Superheroes", "Dinosaur Worlds", "Robot Friends"
 ]
 
 TONES = [
-    "Happy", "Sad", "Exciting", "Calm", "Funny", "Scary",
-    "Educational", "Inspirational",
+    "Mysterious", "Energetic", "Calm", "Silly", "Joyful", "Epic"
 ]
 
 MORALS = [
-    "Honesty", "Kindness", "Sharing", "Forgiveness", "Patience",
-    "Responsibility", "Respect", "Gratitude",
+    "Bravery", "Teamwork", "Empathy", "Curiosity", "Problem Solving"
 ]
 
 ART_STYLES = [
-    # Must match the art style prefixes defined in story_generator.py STORY_SYSTEM_PROMPT
-    "Disney3D", "Watercolor", "FlatVector", "Anime", "Clay",
+    "PixelArt", "ComicBook", "OilPainting", "Sketch", "CGI"
 ]
 
 PROFILES = [

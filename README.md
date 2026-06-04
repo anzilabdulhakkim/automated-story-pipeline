@@ -60,7 +60,7 @@ IMAGE_DELAY_SECONDS=1
 ## Key Features
 
 - Full StoryPipeline System Prompt — Child-safe storytelling with safety protocol, silent reframing, age-based parameters, and visual consistency enforcement
-- Age-Adaptive Output — 8 pages (ages 3-5), 12 pages (ages 6-8), 18 pages (ages 9-12) with strict word count limits
+- Age-Adaptive Output — 5 pages (ages 3-5), 10 pages (ages 6-8), 15 pages (ages 9-12) with strict word count limits
 - AI Image Generation — Per-page illustrations via Imagen with character consistency lock and auto-repair guardrails
 - Word Document Output — Side-by-side layout (image left, text right) with cover page
 - Response Caching — Same prompt never hits the API twice
@@ -96,10 +96,10 @@ IMAGE_DELAY_SECONDS=1
 | Dimension         | Count     | Examples                                            |
 |-------------------|-----------|-----------------------------------------------------|
 | Profile Ages      | 10        | 3, 4, 6, 11, 12                                    |
-| Categories        | 13        | Adventure, Fantasy, Friendship, Mythology, Sci-Fi   |
-| Tones             | 8         | Happy, Calm, Exciting, Funny, Inspirational         |
-| Moral Values      | 8         | Honesty, Kindness, Sharing, Forgiveness, Patience   |
-| Art Styles        | 5         | Disney3D, Watercolor, FlatVector, Anime, Clay       |
+| Categories        | 13        | Space Exploration, Magical Kingdoms, Ocean Adventures, Time Travel, Superheroes   |
+| Tones             | 8         | Mysterious, Energetic, Calm, Silly, Joyful         |
+| Moral Values      | 8         | Bravery, Teamwork, Empathy, Curiosity, Problem Solving   |
+| Art Styles        | 5         | CGI, PixelArt, ComicBook, OilPainting, Sketch       |
 | Example Prompts   | 95        | "bedtime story about dinosaur", "brave girl"        |
 
 ---

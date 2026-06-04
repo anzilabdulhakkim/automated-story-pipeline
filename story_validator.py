@@ -24,9 +24,9 @@ class AgeSpec:
 
 
 AGE_SPECS: tuple[AgeSpec, ...] = (
-    AgeSpec(3, 5, 8, 25, 50),
-    AgeSpec(6, 8, 12, 40, 100),
-    AgeSpec(9, 12, 18, 75, 120),
+    AgeSpec(3, 5, 5, 20, 40),
+    AgeSpec(6, 8, 10, 50, 80),
+    AgeSpec(9, 12, 15, 90, 150),
 )
 
 
