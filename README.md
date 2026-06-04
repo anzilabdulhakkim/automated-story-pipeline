@@ -1,6 +1,6 @@
-# Prajna Story Pipeline
+# Automated Story Pipeline
 
-A production-grade pipeline for generating personalized children's picture books using Google gemini-3-flash-preview. Outputs fully formatted Word documents with AI-generated illustrations and age-appropriate text.
+A proprietary, production-grade automated pipeline for generating personalized children's picture books using Google Gemini. This backend engine handles the entire lifecycle: taking basic inputs, generating age-appropriate stories, calling Google Imagen for page-by-page illustrations, and assembling the final output into fully formatted Microsoft Word (.docx) documents.
 
 ---
 
@@ -8,13 +8,14 @@ A production-grade pipeline for generating personalized children's picture books
 
 ### 1. Prerequisites
 - Python 3.9+
-- A Google Gemini API Key (get from aistudio.google.com)
+- A Google Gemini API Key (get from [Google AI Studio](https://aistudio.google.com/))
 
 ### 2. Installation
 
 **For Mac / Linux:**
 ```bash
-cd ai-story-pipeline
+# Clone the repository (must have private access)
+cd automated-story-pipeline
 
 # Create and activate virtual environment
 python3 -m venv venv
@@ -58,7 +59,7 @@ IMAGE_DELAY_SECONDS=1
 
 ## Key Features
 
-- Full Prajna System Prompt — Child-safe storytelling with safety protocol, silent reframing, age-based parameters, and visual consistency enforcement
+- Full StoryPipeline System Prompt — Child-safe storytelling with safety protocol, silent reframing, age-based parameters, and visual consistency enforcement
 - Age-Adaptive Output — 8 pages (ages 3-5), 12 pages (ages 6-8), 18 pages (ages 9-12) with strict word count limits
 - AI Image Generation — Per-page illustrations via Imagen with character consistency lock and auto-repair guardrails
 - Word Document Output — Side-by-side layout (image left, text right) with cover page
@@ -73,7 +74,7 @@ IMAGE_DELAY_SECONDS=1
 | File                 | Purpose                                                     |
 |----------------------|-------------------------------------------------------------|
 | `generate.py`        | Main CLI entry point — generates stories with Word docs     |
-| `story_generator.py` | Prajna system prompt + user prompt builder -> Gemini Flash  |
+| `story_generator.py` | StoryPipeline system prompt + user prompt builder -> Gemini Flash  |
 | `doc_builder.py`     | Image generation + Word document assembly                   |
 | `gemini_client.py`   | Async Gemini SDK client with retry, cache, rate limiting   |
 | `router.py`          | Model routing (Flash / Pro / Imagen classification)         |
