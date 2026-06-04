@@ -1,5 +1,5 @@
 """
-generate.py — Main CLI entry point for the Prajna Story Pipeline.
+generate.py — Main CLI entry point for the StoryPipeline Story Pipeline.
 
 Generates N stories with full Word document output (cover + page images + text).
 
@@ -209,7 +209,12 @@ def save_story_as_markdown(story_json: dict, config: dict) -> str:
         if c.isalnum() or c in " _-"
     ).strip().replace(" ", "_")
 
-    filename = f"Prajna_STORY_{config['target_age']}yr_{config['user_nickname']}_{safe_title}.md"
+    safe_nickname = "".join(
+        c for c in config.get("user_nickname", "Alex")
+        if c.isalnum() or c in " _-"
+    ).strip()
+
+    filename = f"StoryPipeline_STORY_{config['target_age']}yr_{safe_nickname}_{safe_title}.md"
     filepath = os.path.join("stories", filename)
 
     md = []
@@ -280,15 +285,21 @@ async def process_single_story(
                 c for c in story_json.get("title", f"Story_{index+1}")
                 if c.isalnum() or c in " _-"
             ).strip()
+            
+            safe_nickname = "".join(
+                c for c in config.get("user_nickname", "Alex")
+                if c.isalnum() or c in " _-"
+            ).strip()
+            
             story_json["output_filename"] = (
-                f"Prajna_{config['target_age']}yr_"
-                f"{config['user_nickname']}_{safe_title}_{story_id[-6:]}.docx"
+                f"StoryPipeline_{config['target_age']}yr_"
+                f"{safe_nickname}_{safe_title}_{story_id[-6:]}.docx"
             )
 
             # Per-story image folder so images don't overwrite across stories
             image_folder = os.path.join(
                 CONFIG.story_images_dir,
-                f"{config['user_nickname']}_{safe_title}".replace(" ", "_"),
+                f"{safe_nickname}_{safe_title}".replace(" ", "_"),
             )
 
             doc_start = time.time()
@@ -406,7 +417,7 @@ async def main_async(amount: int, dry_run: bool, text_only: bool) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Prajna Story Pipeline — Generate stories with Word docs.",
+        description="StoryPipeline Story Pipeline — Generate stories with Word docs.",
     )
     parser.add_argument(
         "amount", nargs="?", type=int, default=1,

@@ -9,6 +9,7 @@ import logging
 import os
 import threading
 import time
+import concurrent.futures
 from dataclasses import asdict, dataclass, field
 from typing import Optional
 
@@ -78,6 +79,9 @@ class RateLimiter:
         self.state_file     = state_file
         self._sessions: dict[str, SessionBudget] = {}
         self._lock = threading.RLock()
+        self._executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="RateLimiterIO"
+        )
 
         os.makedirs(os.path.dirname(state_file), exist_ok=True)
         self._load_state()
@@ -198,8 +202,13 @@ class RateLimiter:
             pass  # corrupt state → start fresh
 
     def _save_state(self) -> None:
+        # Capture payload while under the RLock
+        payload = {sid: s.to_dict() for sid, s in self._sessions.items()}
+        # Dispatch the synchronous file I/O to the background thread
+        self._executor.submit(self._write_to_disk, payload)
+
+    def _write_to_disk(self, payload: dict) -> None:
         try:
-            payload = {sid: s.to_dict() for sid, s in self._sessions.items()}
             with open(self.state_file, "w", encoding="utf-8") as fh:
                 json.dump(payload, fh, indent=2)
         except OSError:

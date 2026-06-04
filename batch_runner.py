@@ -63,7 +63,7 @@ async def process_single_story(
             ).strip().replace(" ", "_")
             # Set output_filename so doc_builder doesn't overwrite previous stories
             story_json["output_filename"] = (
-                f"Prajna_{config['target_age']}yr_"
+                f"StoryPipeline_{config['target_age']}yr_"
                 f"{config['user_nickname']}_{safe_title}_{story_id[-6:]}.docx"
             )
 

@@ -352,7 +352,7 @@ def create_word_document(
         doc.add_page_break()
 
     os.makedirs(output_dir, exist_ok=True)
-    output_filename = story_data.get("output_filename", "Prajna_Story_Sample.docx")
+    output_filename = story_data.get("output_filename", "StoryPipeline_Story_Sample.docx")
     output_path = os.path.join(output_dir, output_filename)
     doc.save(output_path)
 

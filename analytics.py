@@ -66,7 +66,7 @@ def print_analytics(session_prefix: str = "", since_iso: str = "") -> None:
     print("\n" + "=" * 60)
     print("  PRODUCTION PIPELINE ANALYTICS")
     if since_iso or session_prefix:
-        print(f"  Filters: session='{session_prefix or "(all)"}' since='{since_iso or "(all)"}'")
+        print(f"  Filters: session='{session_prefix or '(all)'}' since='{since_iso or '(all)'}'")
     print("=" * 60)
 
     # Cost by Model

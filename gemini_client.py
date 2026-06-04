@@ -1,4 +1,4 @@
-﻿"""
+"""
 gemini_client.py — Production-grade async Gemini API client.
 
 Handles caching, rate-limiting, retries, and generation requests using the google-genai SDK.
@@ -526,31 +526,6 @@ class GeminiClient:
         sleeps if the window is already at capacity before recording a new slot.
         """
         window = 60.0
-
-        # Acquire the lock to ensure we evaluate and update the sliding window atomically
-        async with self._rpm_lock:
-            # We use a while loop because after sleeping, another task might have run
-            # and taken our slot. We must re-evaluate until a slot is truly free.
-            while True:
-                now = time.monotonic()
-                # Purge entries outside the rolling window
-                while self._request_timestamps and now - self._request_timestamps[0] > window:
-                    self._request_timestamps.popleft()
-
-                if len(self._request_timestamps) < model_cfg.rpm_limit:
-                    # We have capacity, break out and record our timestamp below
-                    break
-
-                # We are at capacity. Calculate sleep time and yield the lock while we sleep.
-                # Adding a small 50ms buffer to ensure we aren't precisely on the boundary
-                wait = window - (now - self._request_timestamps[0]) + 0.05
-                log.info(
-                    "RPM limit (%d/min) reached - waiting %.1fs before next call.",
-                    model_cfg.rpm_limit, wait,
-                )
-
-                pass
-
 
         while True:
             wait = 0.0
