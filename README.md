@@ -96,9 +96,9 @@ IMAGE_DELAY_SECONDS=1
 | Dimension         | Count     | Examples                                            |
 |-------------------|-----------|-----------------------------------------------------|
 | Profile Ages      | 10        | 3, 4, 6, 11, 12                                    |
-| Categories        | 13        | Space Exploration, Magical Kingdoms, Ocean Adventures, Time Travel, Superheroes   |
-| Tones             | 8         | Mysterious, Energetic, Calm, Silly, Joyful         |
-| Moral Values      | 8         | Bravery, Teamwork, Empathy, Curiosity, Problem Solving   |
+| Categories        | 7         | Space Exploration, Magical Kingdoms, Ocean Adventures, Time Travel, Superheroes   |
+| Tones             | 6         | Mysterious, Energetic, Calm, Silly, Joyful         |
+| Moral Values      | 5         | Bravery, Teamwork, Empathy, Curiosity, Problem Solving   |
 | Art Styles        | 5         | CGI, PixelArt, ComicBook, OilPainting, Sketch       |
 | Example Prompts   | 95        | "bedtime story about dinosaur", "brave girl"        |
 

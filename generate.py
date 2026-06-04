@@ -49,7 +49,7 @@ def _configure_event_loop_policy() -> None:
 
 
 CATEGORIES = [
-    "Space Exploration", "Magical Kingdoms", "Ocean Adventures", 
+    "Space Exploration", "Magical Kingdoms", "Ocean Adventures",
     "Time Travel", "Superheroes", "Dinosaur Worlds", "Robot Friends"
 ]
 
